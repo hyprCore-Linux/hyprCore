@@ -13,6 +13,10 @@ Created by Kevin Hinds.
 
 Canonical packages: [`default/install-list`](default/install-list) — a **bare minimum** so live / Desktop / Server can boot and run. Optional apps and branding go in a gitignored [`personalize/`](personalize.example/) overlay that mirrors `default/` (start from [`personalize.example/`](personalize.example/)). The live ISO is **slim** (Hyprland chrome + net/browser). Calamares apt-installs stacks after unpack — **Desktop** (server + desktop) or **Server** (console + SSH, purge live GUI). Disk installs need **network**.
 
+## License
+
+GNU General Public License v3.0. See [LICENSE](LICENSE).
+
 ## What you get
 
 | Session | Behavior |
