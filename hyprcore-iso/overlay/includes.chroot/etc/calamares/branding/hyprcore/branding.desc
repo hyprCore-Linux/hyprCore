@@ -1,0 +1,44 @@
+---
+componentName: hyprcore
+welcomeStyleCalamares: true
+# Compact welcome-hero + expanding logo fills the pane without crushing the language row.
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 920px,620px
+windowPlacement: center
+
+strings:
+    productName:         hyprCore
+    shortProductName:    hyprCore
+    version:             ""
+    shortVersion:        ""
+    versionedName:       hyprCore
+    shortVersionedName:  hyprCore
+    bootloaderEntryName: hyprCore
+    productUrl:          https://hyprcore.local/
+    supportUrl:          https://hyprcore.local/
+    knownIssuesUrl:      https://hyprcore.local/
+    releaseNotesUrl:     https://hyprcore.local/
+    donateUrl:           https://hyprcore.local/
+
+sidebar: widget
+navigation: widget
+
+# Image files are produced by merge-calamares-hyprcore.sh from Build/images/:
+#   calamares/welcome-hero (or image cropped) -> welcome.png: Welcome pane
+#   calamares/image.png    -> slide1.png: install slideshow (may include progress copy)
+#   user-login.png         -> hyprcore-logo.png: sidebar + window icon
+images:
+    productLogo:         "hyprcore-logo.png"
+    productIcon:         "hyprcore-logo.png"
+    productWelcome:      "welcome.png"
+
+slideshow:               "show.qml"
+
+style:
+    SidebarBackground:         "#1a1a1a"
+    SidebarText:               "#c8c8c8"
+    SidebarTextCurrent:        "#ffffff"
+    SidebarBackgroundCurrent:  "#333333"
+
+slideshowAPI: 2

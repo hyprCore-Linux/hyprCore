@@ -1,0 +1,181 @@
+/* BEGIN gtk-theme:waybar-vars */
+@define-color wb_fg #ebdbb2;
+@define-color wb_bg #282828;
+@define-color wb_surface #3c3a36;
+@define-color wb_dim #aea387;
+@define-color wb_muted #d1c39f;
+@define-color wb_inactive0 #3c3a36;
+@define-color wb_inactive1 #343330;
+@define-color wb_hover rgba(60, 58, 54, 0.45);
+/* END gtk-theme:waybar-vars */
+
+/* Capsule bar (dots-hyprland layout, hyprCore @wb_* colors). */
+
+* {
+  font-family: "Inter", "Cantarell", "DejaVu Sans", sans-serif;
+  font-size: 12px;
+  min-height: 0;
+  color: @wb_fg;
+  border: none;
+  box-shadow: none;
+}
+
+window#waybar {
+  background-color: transparent;
+  color: @wb_fg;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  background-color: alpha(@wb_bg, 0.5);
+  border-radius: 21px;
+  margin: 0;
+  padding: 0 8px;
+}
+
+#workspaces {
+  padding: 0 4px;
+}
+
+#workspaces button {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 6px;
+  margin: 6px 2px;
+  color: @wb_dim;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+#workspaces button.active,
+#workspaces button.focused {
+  background: @wb_fg;
+}
+
+#workspaces button.active,
+#workspaces button.active *,
+#workspaces button.active label,
+#workspaces button.focused,
+#workspaces button.focused *,
+#workspaces button.focused label {
+  color: @wb_bg;
+}
+
+#workspaces button:hover {
+  color: @wb_fg;
+  background: @wb_hover;
+}
+
+#workspaces button.active:hover,
+#workspaces button.active:hover *,
+#workspaces button.focused:hover,
+#workspaces button.focused:hover * {
+  color: @wb_bg;
+  background: @wb_fg;
+}
+
+#window {
+  padding: 0 12px;
+  margin: 6px 4px;
+  color: @wb_muted;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+#clock {
+  padding: 0 14px;
+  margin: 4px 4px;
+  color: @wb_fg;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+#tray {
+  padding: 0 8px;
+  margin: 4px 2px;
+}
+
+#custom-settings,
+#custom-power,
+#network {
+  min-width: 28px;
+  padding: 0 8px;
+  margin: 6px 3px;
+  border-radius: 14px;
+  background: transparent;
+  font-family: "FontAwesome", "Inter", "Cantarell", "DejaVu Sans", sans-serif;
+  font-size: 13px;
+  color: @wb_fg;
+}
+
+#image.cpu,
+#image.memory,
+#image.volume,
+#image.menu {
+  min-width: 28px;
+  padding: 0 4px;
+  margin: 6px 2px;
+  background: transparent;
+  border-radius: 14px;
+}
+
+#custom-layout,
+#custom-gtk-sync,
+#custom-weather,
+#battery {
+  padding: 0 10px;
+  margin: 6px 3px;
+  border-radius: 14px;
+  background: transparent;
+  font-family: "Symbols Nerd Font", "FontAwesome", "Inter", "Cantarell", "DejaVu Sans", sans-serif;
+  font-weight: 600;
+  color: @wb_fg;
+}
+
+#custom-layout,
+#custom-gtk-sync {
+  min-width: 3.2em;
+}
+
+#custom-layout {
+  min-width: 28px;
+  margin-left: 8px;
+  padding: 0 10px;
+  font-size: 15px;
+}
+
+#custom-layout.tile,
+#custom-layout.float {
+  color: @wb_fg;
+}
+
+#custom-gtk-sync.ok {
+  color: @wb_muted;
+}
+
+#custom-gtk-sync.syncing {
+  color: @wb_fg;
+}
+
+#custom-gtk-sync.stopped,
+#custom-gtk-sync.missing,
+#custom-gtk-sync.warning {
+  color: @wb_dim;
+}
+
+tooltip {
+  font-family: "Symbols Nerd Font", "FontAwesome", "Inter", "Cantarell", "DejaVu Sans", sans-serif;
+}
+
+#battery.charging,
+#battery.plugged {
+  color: @wb_muted;
+}
+
+#network.disconnected {
+  color: @wb_dim;
+}

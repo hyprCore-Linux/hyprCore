@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+# Default Papirus folder color to manila yellow (live + installed).
+if [ -x /usr/local/bin/papirus-folders ] && [ -d /usr/share/icons/Papirus ]; then
+	for _theme in Papirus Papirus-Dark Papirus-Light; do
+		[ -d "/usr/share/icons/${_theme}" ] || continue
+		/usr/local/bin/papirus-folders -C yellow -t "${_theme}" -u 2>/dev/null \
+			|| /usr/local/bin/papirus-folders -C yellow -t "${_theme}" 2>/dev/null \
+			|| true
+	done
+fi
+
+for _theme in Papirus Papirus-Dark Papirus-Light; do
+	_dir="/usr/share/icons/${_theme}"
+	if [ -d "${_dir}" ] && command -v gtk-update-icon-cache >/dev/null 2>&1; then
+		gtk-update-icon-cache -f "${_dir}" 2>/dev/null || true
+	fi
+done
+chmod 0644 /usr/share/hyprcore/hyprcore-hyprland-session-env.sh 2>/dev/null || true
+chmod 0644 /usr/share/hyprcore/hyprcore-wallpaper-hyprpaper.sh 2>/dev/null || true
+chmod 0644 /usr/share/hyprcore/hyprcore-session-log.sh 2>/dev/null || true
+chmod 0755 /usr/local/bin/hyprcore-settings-panel /usr/local/bin/hyprcore-x11-app /usr/local/bin/hyprcore-launch /usr/local/bin/hyprcore-fuzzel /usr/local/bin/hyprcore-escape /usr/local/bin/hyprcore-screenshot /usr/local/bin/hyprcore-window-switch /usr/local/bin/hyprcore-overview-toggle /usr/local/bin/hyprcore-overview-defaults /usr/local/bin/hyprcore-calamares-live /usr/local/bin/hyprcore-waybar-click /usr/local/bin/hyprcore-session-action /usr/local/bin/papirus-folders 2>/dev/null || true
+chmod 0755 /usr/local/bin/hyprcore-ensure-hyprspace /usr/local/bin/hyprcore-ensure-hyprbars 2>/dev/null || true
+chmod 0755 /usr/share/hyprcore/hyprcore-hyprland-session.sh 2>/dev/null || true
+chmod 0755 /usr/share/hyprcore/hyprcore-hyprland-session-start.sh 2>/dev/null || true
+chmod 0644 /usr/share/wayland-sessions/hyprcore-hyprland.desktop 2>/dev/null || true
+
+exit 0

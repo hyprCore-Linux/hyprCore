@@ -1,0 +1,56 @@
+[
+  {
+    "id": "hyprcore",
+    "name": "hyprCore",
+    "foreground": "#eeffff",
+    "background": "#212121",
+    "palette": [
+      "#000000",
+      "#ff5370",
+      "#c3e88d",
+      "#ffcb6b",
+      "#d75d1b",
+      "#c792ea",
+      "#89ddff",
+      "#ffffff",
+      "#000000",
+      "#ff5370",
+      "#c3e88d",
+      "#ffcb6b",
+      "#82aaff",
+      "#c792ea",
+      "#89ddff",
+      "#ffffff"
+    ],
+    "border": "#272822",
+    "border_active": [
+      "#272822",
+      "#363737"
+    ],
+    "border_inactive": [
+      "#363737",
+      "#2e2e2e"
+    ],
+    "chrome": {
+      "border_size": 0,
+      "rounding": 0,
+      "bevel": "flat",
+      "gradient": "rtl",
+      "bar": [
+        "#363737",
+        "#5e6363"
+      ],
+      "bar_inactive": [
+        "#313333",
+        "#2b2c2c"
+      ],
+      "buttons": {
+        "size": 18,
+        "kit": "gnome",
+        "minimize": "−",
+        "maximize": "□",
+        "close": "×"
+      }
+    }
+  }
+]

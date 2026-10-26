@@ -1,0 +1,476 @@
+#!/usr/bin/env bash
+# Debian live-build: hyprCore Hyprland live ISO profile.
+# Run from hyprcore-iso/. Overlay is merged into HYPRCORE_BUILD_ROOT.
+# Branding: default/images/ + optional personalize/images/ (prefer personalize).
+
+set -euo pipefail
+SCRIPT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_ROOT/.." && pwd)"
+METADATA_DEFAULT="$REPO_ROOT/default/metadata"
+PERSONALIZE="$REPO_ROOT/personalize"
+IMAGES_DEFAULT="$REPO_ROOT/default/images"
+IMAGES_PERSONALIZE="$PERSONALIZE/images"
+
+# shellcheck source=/dev/null
+source "$REPO_ROOT/share/hyprcore-personalize.sh"
+# shellcheck source=/dev/null
+source "$REPO_ROOT/share/linuxos-layout.sh"
+# Monorepo root (parent of hyprCore/) when Packages/ sits beside this checkout.
+LINUXOS_ROOT="$(hyprcore_linuxos_root "$REPO_ROOT" || true)"
+LINUXOS_PACKAGES="$(hyprcore_packages_dir "$REPO_ROOT" || true)"
+# shellcheck source=/dev/null
+source "$METADATA_DEFAULT/debian.env"
+if [[ -r "$PERSONALIZE/metadata/debian.env" ]]; then
+  # shellcheck source=/dev/null
+  source "$PERSONALIZE/metadata/debian.env"
+fi
+
+_build_var="${HYPRCORE_BUILD_ROOT_VAR}"
+_staging_sh="$REPO_ROOT/share/hyprcore-build-staging.sh"
+if [[ -r "$_staging_sh" ]]; then
+  # shellcheck source=../share/hyprcore-build-staging.sh
+  source "$_staging_sh"
+  hyprcore_apply_build_staging "${HYPRCORE_BUILD_ROOT:-${!_build_var:-}}"
+  BUILD_ROOT="$HYPRCORE_BUILD_ROOT"
+else
+  BUILD_ROOT="${HYPRCORE_BUILD_ROOT:-${!_build_var:-$HYPRCORE_BUILD_ROOT_DEFAULT}}"
+fi
+export HYPRCORE_BUILD_ROOT="$BUILD_ROOT"
+export HYPRCORE_GEN_DIR="${HYPRCORE_GEN_DIR:-${BUILD_ROOT}/generated}"
+export HYPRCORE_LIST_DIR="${HYPRCORE_LIST_DIR:-${HYPRCORE_GEN_DIR}/package-lists}"
+export HYPRCORE_CALAMARES_GEN="${HYPRCORE_CALAMARES_GEN:-${HYPRCORE_GEN_DIR}/calamares}"
+
+OVERLAY="$SCRIPT_ROOT/overlay"
+SKEL_HYPRCORE_SHARE="$BUILD_ROOT/config/includes.chroot/etc/skel/.local/share/hyprcore"
+
+mkdir -p "$BUILD_ROOT"
+
+_live_bg="$(hyprcore_resolve_image "$IMAGES_DEFAULT" "$IMAGES_PERSONALIZE" "live/background" || true)"
+cd "$BUILD_ROOT"
+
+if ! command -v lb >/dev/null 2>&1; then
+  echo "lb (live-build) not found. Install: sudo apt install live-build live-boot-doc" >&2
+  exit 1
+fi
+
+# Groups: Hyprland needs input/render/video; LightDM autologin expects "autologin".
+# Without these the compositor fails and LightDM falls back to the greeter.
+_live_groups="audio,cdrom,dip,floppy,video,plugdev,netdev,scanner,bluetooth,sudo,autologin,input,render,lpadmin"
+_bootappend="boot=live components username=live user-default-groups=${_live_groups}"
+if [[ -n "${LB_LIVE_USER_PASSWORD:-}" ]]; then
+  _bootappend="${_bootappend} user-password=${LB_LIVE_USER_PASSWORD}"
+fi
+_bootappend="${_bootappend} hostname=${HYPRCORE_LIVE_HOSTNAME}"
+lb config \
+  --distribution "$LB_DISTRIBUTION" \
+  --debootstrap-options "--variant=minbase" \
+  --debian-installer none \
+  --archive-areas "$LB_ARCHIVE_AREAS" \
+  --binary-image iso-hybrid \
+  --bootloaders "grub-pc grub-efi" \
+  --bootappend-live "$_bootappend"
+
+mkdir -p config/package-lists config/includes.chroot \
+  config/hooks/normal config/bootloaders
+shopt -s nullglob
+# Package lists are generated from install-list (+ personalize) into
+# $HYPRCORE_LIST_DIR by ../build.sh. The copies committed under
+# overlay/package-lists/ are a stale snapshot — silently falling back to them
+# ships an ISO missing whatever install-list gained since (e.g. CUPS), so
+# refuse instead. Set HYPRCORE_ALLOW_STALE_LISTS=1 to force the old behaviour.
+_list_src="${HYPRCORE_LIST_DIR:-}"
+if [[ -n "$_list_src" && -d "$_list_src" ]] && compgen -G "$_list_src/*.list.chroot" >/dev/null 2>&1; then
+  echo "Using generated package-lists from ${_list_src}"
+elif [[ "${HYPRCORE_ALLOW_STALE_LISTS:-0}" == "1" ]]; then
+  _list_src="$OVERLAY/package-lists"
+  echo "WARNING: using stale committed package-lists from ${_list_src} (HYPRCORE_ALLOW_STALE_LISTS=1)." >&2
+  echo "WARNING: these may not match default/install-list — the ISO can be missing packages." >&2
+else
+  echo "ERROR: no generated package-lists found${HYPRCORE_LIST_DIR:+ at $HYPRCORE_LIST_DIR}." >&2
+  echo "Package lists are regenerated from default/install-list (+ personalize) by the" >&2
+  echo "repo-root build.sh, which then runs this script." >&2
+  echo "" >&2
+  echo "Fix: cd $REPO_ROOT && ./build.sh            # full build (setup + lb)" >&2
+  echo "     cd $REPO_ROOT && ./build.sh --lists-only   # just regenerate, then re-run setup.sh" >&2
+  echo "" >&2
+  echo "Override (not recommended): HYPRCORE_ALLOW_STALE_LISTS=1 ./setup.sh" >&2
+  exit 1
+fi
+for f in "$_list_src"/*.list.chroot; do
+  cp -a "$f" config/package-lists/
+done
+if [[ -d "$OVERLAY/bootloaders" ]]; then
+  cp -a "$OVERLAY/bootloaders/." config/bootloaders/
+fi
+
+if [[ -d "$OVERLAY/includes.chroot" ]]; then
+  cp -a "$OVERLAY/includes.chroot/." config/includes.chroot/
+fi
+
+# Live wallpaper → skel (under live-build tree only; never hyprcore-iso/overlay/).
+if [[ -n "${_live_bg:-}" ]]; then
+  mkdir -p "$SKEL_HYPRCORE_SHARE"
+  if command -v convert >/dev/null 2>&1 && [[ "${_live_bg##*.}" != "png" ]]; then
+    convert "$_live_bg" PNG:"$SKEL_HYPRCORE_SHARE/background.png"
+  else
+    cp -a "$_live_bg" "$SKEL_HYPRCORE_SHARE/background.png"
+  fi
+fi
+
+MERGE_GRUB="$REPO_ROOT/share/merge-grub-branding.sh"
+if [[ -x "$MERGE_GRUB" ]]; then
+  "$MERGE_GRUB" "$BUILD_ROOT/config"
+elif [[ -f "$MERGE_GRUB" ]]; then
+  echo "WARNING: missing executable $MERGE_GRUB — live ISO may show ${HYPRCORE_GRUB_FALLBACK_MSG}." >&2
+fi
+
+# Regenerated Calamares package lists (from build.sh) override stock overlay copies.
+if [[ -d "${HYPRCORE_CALAMARES_GEN:-}" ]]; then
+  mkdir -p config/includes.chroot/etc/calamares
+  shopt -s nullglob
+  for _cal_list in "$HYPRCORE_CALAMARES_GEN"/hyprcore-*.list; do
+    [[ -f "$_cal_list" ]] || continue
+    cp -a "$_cal_list" config/includes.chroot/etc/calamares/
+  done
+  shopt -u nullglob
+fi
+
+# Dropbox / sync often strips +x — force script modes into the live-build tree.
+while IFS= read -r -d '' _script; do
+  chmod 0755 "$_script"
+done < <(find "$BUILD_ROOT/config/includes.chroot/usr/local/bin" \
+  "$BUILD_ROOT/config/includes.chroot/usr/local/sbin" \
+  "$BUILD_ROOT/config/includes.chroot/usr/local/libexec" \
+  "$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore" \
+  -type f \( -name 'hyprcore-*' -o -name 'gparted' -o -name 'synaptic' -o -name 'synaptic-pkexec' \) -print0 2>/dev/null)
+
+while IFS= read -r -d '' _sh; do
+  chmod 0755 "$_sh"
+done < <(find "$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore" \
+  -type f -name '*.sh' -print0 2>/dev/null)
+
+_distro_conf="$(hyprcore_resolve_file "$METADATA_DEFAULT" "$PERSONALIZE/metadata" "${HYPRCORE_DISTRO_CONF}" || true)"
+if [[ -n "${_distro_conf:-}" ]]; then
+  mkdir -p "$BUILD_ROOT/config/includes.chroot/etc/hyprcore"
+  cp -a "$_distro_conf" \
+    "$BUILD_ROOT/config/includes.chroot/etc/hyprcore/distro.conf"
+fi
+
+INST_BG_DEST="$BUILD_ROOT/config/includes.chroot/usr/share/backgrounds/hyprcore-installed"
+mkdir -p "$INST_BG_DEST"
+# Defaults first, then personalize overwrites same basenames.
+for _dir in "$IMAGES_DEFAULT/installed" "$IMAGES_PERSONALIZE/installed"; do
+  [[ -d "$_dir" ]] || continue
+  shopt -s nullglob
+  for _bg in "$_dir"/*.png "$_dir"/*.jpg "$_dir"/*.jpeg "$_dir"/*.webp; do
+    [[ -f "$_bg" ]] || continue
+    cp -a "$_bg" "$INST_BG_DEST/"
+  done
+done
+# Ensure a canonical background.png exists for skel hyprpaper.conf / live fallback.
+if [[ ! -f "$INST_BG_DEST/background.png" ]]; then
+  if [[ -n "${_live_bg:-}" && -f "${_live_bg}" ]]; then
+    if command -v convert >/dev/null 2>&1 && [[ "${_live_bg##*.}" != "png" ]]; then
+      convert "$_live_bg" PNG:"$INST_BG_DEST/background.png"
+    else
+      cp -a "$_live_bg" "$INST_BG_DEST/background.png"
+    fi
+  else
+    _any="$(find "$INST_BG_DEST" -type f \( -name '*.png' -o -name '*.jpg' \) | head -1 || true)"
+    if [[ -n "${_any:-}" ]]; then
+      cp -a "$_any" "$INST_BG_DEST/background.png"
+    fi
+  fi
+fi
+# Also mirror live wallpaper into the picker folder when distinct.
+if [[ -n "${_live_bg:-}" && -f "$SKEL_HYPRCORE_SHARE/background.png" ]]; then
+  cp -a "$SKEL_HYPRCORE_SHARE/background.png" "$INST_BG_DEST/live-background.png"
+fi
+
+HYPRCORE_PIX="$BUILD_ROOT/config/includes.chroot/usr/share/pixmaps"
+_menu_icon="$(hyprcore_resolve_image "$IMAGES_DEFAULT" "$IMAGES_PERSONALIZE" "icons/menu-icon" || true)"
+if [[ -n "${_menu_icon:-}" ]]; then
+  mkdir -p "$HYPRCORE_PIX"
+  if command -v convert >/dev/null 2>&1; then
+    convert "$_menu_icon" PNG:"$HYPRCORE_PIX/menu-icon.png"
+  else
+    cp -a "$_menu_icon" "$HYPRCORE_PIX/menu-icon.png"
+  fi
+  SKEL="$BUILD_ROOT/config/includes.chroot/etc/skel"
+  mkdir -p "$SKEL"
+  if command -v convert >/dev/null 2>&1; then
+    convert "$_menu_icon" -resize '512x512^' -gravity center -extent 512x512 PNG:"$SKEL/.face"
+    convert "$_menu_icon" -resize '96x96^' -gravity center -extent 96x96 PNG:"$SKEL/.face.icon"
+  else
+    echo "warning: ImageMagick convert not found; install imagemagick on the build host for sized .face / .face.icon (using full-size copies)." >&2
+    cp -a "$_menu_icon" "$SKEL/.face"
+    cp -a "$_menu_icon" "$SKEL/.face.icon"
+  fi
+  chmod 0644 "$SKEL/.face" "$SKEL/.face.icon"
+fi
+_merge="$REPO_ROOT/share/merge-calamares-hyprcore.sh"
+if [[ -f "$_merge" ]]; then
+  chmod +x "$_merge"
+  "$_merge" "$BUILD_ROOT/config/includes.chroot" "$IMAGES_DEFAULT" "$IMAGES_PERSONALIZE"
+fi
+
+# Core GTK apps from default/gtk-apps → /usr/local/lib/hyprcore/gtk-apps + bin + desktops
+_gtk_apps="$REPO_ROOT/default/gtk-apps"
+if [[ -d "$_gtk_apps/bin" ]]; then
+  _gtk_lib="$BUILD_ROOT/config/includes.chroot/usr/local/lib/hyprcore/gtk-apps"
+  _gtk_bin="$BUILD_ROOT/config/includes.chroot/usr/local/bin"
+  _gtk_desk="$BUILD_ROOT/config/includes.chroot/usr/share/applications"
+  mkdir -p "$_gtk_lib" "$_gtk_bin" "$_gtk_desk"
+  shopt -s nullglob
+  for _bin in "$_gtk_apps"/bin/*; do
+    [[ -f "$_bin" ]] || continue
+    _name="$(basename "$_bin")"
+    cp -a "$_bin" "$_gtk_lib/$_name"
+    chmod 0755 "$_gtk_lib/$_name"
+    ln -sfn "../lib/hyprcore/gtk-apps/$_name" "$_gtk_bin/$_name"
+  done
+  for _desk in "$_gtk_apps"/applications/*.desktop; do
+    [[ -f "$_desk" ]] || continue
+    cp -a "$_desk" "$_gtk_desk/"
+  done
+  # Multi-file app payloads (e.g. gtk-colors): apps/<name>/ → lib/apps/<name>/
+  if [[ -d "$_gtk_apps/apps" ]]; then
+    mkdir -p "$_gtk_lib/apps"
+    for _appdir in "$_gtk_apps"/apps/*/; do
+      [[ -d "$_appdir" ]] || continue
+      _appname="$(basename "$_appdir")"
+      [[ "$_appname" == .* ]] && continue
+      rm -rf "$_gtk_lib/apps/$_appname"
+      cp -a "$_appdir" "$_gtk_lib/apps/$_appname"
+    done
+  fi
+  # Terminal compatibility launcher + MIME re-apply helper
+  if [[ -f "$_gtk_apps/applications/gtk-term-launch.sh" ]]; then
+    install -m 0755 "$_gtk_apps/applications/gtk-term-launch.sh" \
+      "$BUILD_ROOT/config/includes.chroot/usr/local/bin/gtk-term-launch.sh"
+  fi
+  if [[ -f "$_gtk_apps/applications/install-defaults.sh" ]]; then
+    mkdir -p "$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore/gtk-apps"
+    install -m 0755 "$_gtk_apps/applications/install-defaults.sh" \
+      "$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore/gtk-apps/install-defaults.sh"
+  fi
+  # gtk-files owns FileManager1 / xfce file-manager D-Bus names
+  if [[ -f "$_gtk_apps/applications/gtk-files-filemanager1" ]]; then
+    _chroot="$BUILD_ROOT/config/includes.chroot"
+    install -m 0755 "$_gtk_apps/applications/gtk-files-filemanager1" \
+      "$_chroot/usr/local/bin/gtk-files-filemanager1"
+    if [[ -f "$_gtk_apps/systemd/thunar.service" ]]; then
+      mkdir -p "$_chroot/etc/systemd/user"
+      install -m 0644 "$_gtk_apps/systemd/thunar.service" \
+        "$_chroot/etc/systemd/user/thunar.service"
+    fi
+    if [[ -d "$_gtk_apps/dbus-1" ]]; then
+      mkdir -p "$_chroot/usr/local/share/dbus-1/services"
+      install -m 0644 "$_gtk_apps"/dbus-1/*.service \
+        "$_chroot/usr/local/share/dbus-1/services/"
+    fi
+    if [[ -f "$_gtk_apps/hide/thunar.desktop" ]]; then
+      mkdir -p "$_chroot/usr/local/share/applications"
+      install -m 0644 "$_gtk_apps/hide/thunar.desktop" \
+        "$_chroot/usr/local/share/applications/thunar.desktop"
+    fi
+    if [[ -f "$_gtk_apps/hide/yelp.desktop" ]]; then
+      mkdir -p "$_chroot/usr/local/share/applications"
+      install -m 0644 "$_gtk_apps/hide/yelp.desktop" \
+        "$_chroot/usr/local/share/applications/yelp.desktop"
+    fi
+    if [[ -f "$_gtk_apps/environment.d/50-hyprcore-gtk-apps.conf" ]]; then
+      mkdir -p "$_chroot/usr/lib/environment.d"
+      install -m 0644 "$_gtk_apps/environment.d/50-hyprcore-gtk-apps.conf" \
+        "$_chroot/usr/lib/environment.d/50-hyprcore-gtk-apps.conf"
+    fi
+    if [[ -f "$_gtk_apps/xfce4/helpers.rc" ]]; then
+      mkdir -p "$_chroot/etc/xdg/xfce4" "$_chroot/etc/skel/.config/xfce4"
+      install -m 0644 "$_gtk_apps/xfce4/helpers.rc" \
+        "$_chroot/etc/xdg/xfce4/helpers.rc"
+      install -m 0644 "$_gtk_apps/xfce4/helpers.rc" \
+        "$_chroot/etc/skel/.config/xfce4/helpers.rc"
+    fi
+    echo "Staged gtk-files as FileManager1"
+  fi
+  # User-local x-terminal-emulator early on PATH (skel)
+  _skel_local_bin="$BUILD_ROOT/config/includes.chroot/etc/skel/.local/bin"
+  mkdir -p "$_skel_local_bin"
+  ln -sfn /usr/local/bin/gtk-term-launch.sh "$_skel_local_bin/x-terminal-emulator"
+  shopt -u nullglob
+
+  # Shared gtk-theme data (profiles.json + python); editor is on PATH via bin/ above
+  if [[ -d "$_gtk_apps/gtk-theme" ]]; then
+    _theme_share="$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore/gtk-theme"
+    mkdir -p "$_theme_share"
+    cp -a "$_gtk_apps/gtk-theme/." "$_theme_share/"
+  fi
+
+  # gtk-sync installer payload next to gtk-files (Setup Sync sidebar).
+  # gtk-files resolves suite_script via …/gtk-apps/gtk-sync/{install,uninstall}.sh
+  if [[ -d "$_gtk_apps/gtk-sync" && -f "$_gtk_apps/gtk-sync/install.sh" ]]; then
+    rm -rf "$_gtk_lib/gtk-sync"
+    cp -a "$_gtk_apps/gtk-sync" "$_gtk_lib/gtk-sync"
+    chmod 0755 "$_gtk_lib/gtk-sync/install.sh" "$_gtk_lib/gtk-sync/uninstall.sh" 2>/dev/null || true
+    [[ -x "$_gtk_lib/gtk-sync/target/release/gtk-sync" ]] && \
+      chmod 0755 "$_gtk_lib/gtk-sync/target/release/gtk-sync"
+    [[ -x "$_gtk_lib/gtk-sync/target/release/gtk-sync-client" ]] && \
+      chmod 0755 "$_gtk_lib/gtk-sync/target/release/gtk-sync-client"
+    echo "Staged gtk-sync installer next to gtk-files"
+  fi
+
+  # Stock gtk-apps theme.toml lives in default/configs/gtk-apps/ (→ ~/configs via merge).
+  # Do not write ~/.config/gtk-apps here; merge-personalize-dropins creates the symlink.
+  echo "Staged default/gtk-apps (suite + gtk-theme-editor + gtk-theme data + gtk-sync + MIME defaults) into includes.chroot"
+fi
+
+# hypr-settings — system settings GUI (Wi‑Fi / BT / Displays / Sound / …)
+_hypr_settings="$REPO_ROOT/default/hypr-settings"
+if [[ -x "$_hypr_settings/hyprcore-install.sh" ]]; then
+  echo "Staging hypr-settings into includes.chroot…"
+  DESTDIR="$BUILD_ROOT/config/includes.chroot" "$_hypr_settings/hyprcore-install.sh"
+fi
+
+# hyprframes plugin sources — compiled in hook 998 against ISO Hyprland ABI.
+# Prefer ../Packages (see share/linuxos-layout.sh); fall back to other sibling paths.
+_hyprframes=""
+if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprframes/CMakeLists.txt" ]]; then
+  _hyprframes="${LINUXOS_PACKAGES}/hyprframes"
+fi
+[[ -n "${_hyprframes}" ]] || _hyprframes="$(cd "$REPO_ROOT/../Packages/hyprframes" 2>/dev/null && pwd || true)"
+[[ -n "${_hyprframes}" ]] || _hyprframes="$(cd "$REPO_ROOT/../hyprframes" 2>/dev/null && pwd || true)"
+if [[ -n "${_hyprframes}" && -f "${_hyprframes}/CMakeLists.txt" ]]; then
+  _ib_src="$BUILD_ROOT/config/includes.chroot/usr/src/hyprcore/hyprframes"
+  mkdir -p "$_ib_src"
+  shopt -s nullglob
+  for _f in "${_hyprframes}"/*.cpp "${_hyprframes}"/*.hpp \
+            "${_hyprframes}/CMakeLists.txt" "${_hyprframes}/VERSION" \
+            "${_hyprframes}/example.png"; do
+    [[ -f "$_f" ]] || continue
+    cp -a "$_f" "$_ib_src/"
+  done
+  shopt -u nullglob
+  # hyprutils-0.13 shim required for Hyprland 0.55.2 vs system 0.14
+  if [[ -d "${_hyprframes}/third_party/hyprutils-0.13" ]]; then
+    mkdir -p "$_ib_src/third_party"
+    cp -a "${_hyprframes}/third_party/hyprutils-0.13" "$_ib_src/third_party/"
+  fi
+  echo "Staged hyprframes sources → usr/src/hyprcore/hyprframes"
+else
+  echo "WARNING: Packages/hyprframes not found — ISO will not build libhyprframes.so" >&2
+fi
+
+# hyprCore hyprbars (gradient + bar_image) — compiled in hook 998.
+_hyprbars=""
+if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprbars/Makefile" ]]; then
+  _hyprbars="${LINUXOS_PACKAGES}/hyprbars"
+fi
+[[ -n "${_hyprbars}" ]] || _hyprbars="$(cd "$REPO_ROOT/../Packages/hyprbars" 2>/dev/null && pwd || true)"
+if [[ -n "${_hyprbars}" && -f "${_hyprbars}/Makefile" ]]; then
+  _hb_src="$BUILD_ROOT/config/includes.chroot/usr/src/hyprcore/hyprbars"
+  rm -rf "$_hb_src"
+  mkdir -p "$_hb_src"
+  shopt -s nullglob
+  for _f in "${_hyprbars}"/*.cpp "${_hyprbars}"/*.hpp \
+            "${_hyprbars}/Makefile" "${_hyprbars}/CMakeLists.txt" \
+            "${_hyprbars}/meson.build" "${_hyprbars}/README.md"; do
+    [[ -f "$_f" ]] || continue
+    cp -a "$_f" "$_hb_src/"
+  done
+  shopt -u nullglob
+  if [[ -d "${_hyprbars}/examples" ]]; then
+    cp -a "${_hyprbars}/examples" "$_hb_src/"
+  fi
+  _hf_tp="${_hyprframes:+${_hyprframes}/third_party/hyprutils-0.13}"
+  if [[ -d "${_hyprbars}/third_party/hyprutils-0.13" ]]; then
+    mkdir -p "$_hb_src/third_party"
+    cp -a "${_hyprbars}/third_party/hyprutils-0.13" "$_hb_src/third_party/"
+  elif [[ -n "${_hf_tp}" && -d "${_hf_tp}" ]]; then
+    mkdir -p "$_hb_src/third_party"
+    cp -a "${_hf_tp}" "$_hb_src/third_party/"
+  fi
+  echo "Staged Packages/hyprbars → usr/src/hyprcore/hyprbars"
+else
+  echo "WARNING: Packages/hyprbars not found — ISO falls back to upstream hyprbars" >&2
+fi
+
+# hyprCore hyprtabs (bottom-of-screen window tabs) — compiled in hook 998.
+_hyprtabs=""
+if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprtabs/Makefile" ]]; then
+  _hyprtabs="${LINUXOS_PACKAGES}/hyprtabs"
+fi
+[[ -n "${_hyprtabs}" ]] || _hyprtabs="$(cd "$REPO_ROOT/../Packages/hyprtabs" 2>/dev/null && pwd || true)"
+if [[ -n "${_hyprtabs}" && -f "${_hyprtabs}/Makefile" ]]; then
+  _ht_src="$BUILD_ROOT/config/includes.chroot/usr/src/hyprcore/hyprtabs"
+  rm -rf "$_ht_src"
+  mkdir -p "$_ht_src"
+  shopt -s nullglob
+  for _f in "${_hyprtabs}"/*.cpp "${_hyprtabs}"/*.hpp \
+            "${_hyprtabs}/Makefile" "${_hyprtabs}/VERSION" \
+            "${_hyprtabs}/README.md"; do
+    [[ -f "$_f" ]] || continue
+    cp -a "$_f" "$_ht_src/"
+  done
+  shopt -u nullglob
+  _hf_tp="${_hyprframes:+${_hyprframes}/third_party/hyprutils-0.13}"
+  if [[ -d "${_hyprtabs}/third_party/hyprutils-0.13" ]]; then
+    mkdir -p "$_ht_src/third_party"
+    cp -a "${_hyprtabs}/third_party/hyprutils-0.13" "$_ht_src/third_party/"
+  elif [[ -n "${_hf_tp}" && -d "${_hf_tp}" ]]; then
+    mkdir -p "$_ht_src/third_party"
+    cp -a "${_hf_tp}" "$_ht_src/third_party/"
+  elif [[ -d "${_hyprbars}/third_party/hyprutils-0.13" ]]; then
+    mkdir -p "$_ht_src/third_party"
+    cp -a "${_hyprbars}/third_party/hyprutils-0.13" "$_ht_src/third_party/"
+  fi
+  echo "Staged Packages/hyprtabs → usr/src/hyprcore/hyprtabs"
+else
+  echo "WARNING: Packages/hyprtabs not found — ISO will not build libhyprtabs.so" >&2
+fi
+
+# crontab.conf: personalize/configs/crontab wins over default/configs/crontab → /usr/share/hyprcore/crontab.conf
+_crontab="$(hyprcore_resolve_file "$REPO_ROOT/default/configs/crontab" "$PERSONALIZE/configs/crontab" "crontab.conf" || true)"
+if [[ -n "${_crontab:-}" ]]; then
+  mkdir -p "$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore"
+  cp -a "$_crontab" "$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore/crontab.conf"
+  echo "Staged crontab.conf → usr/share/hyprcore/crontab.conf"
+fi
+
+# Personalize drop-ins: browser-extensions / configs / services / gtk-apps
+# (default/configs + default/services merge even without personalize/)
+_merge_dropins="$REPO_ROOT/share/merge-personalize-dropins.sh"
+if [[ -x "$_merge_dropins" || -f "$_merge_dropins" ]]; then
+  chmod +x "$_merge_dropins"
+  "$_merge_dropins" "$BUILD_ROOT/config/includes.chroot" "$PERSONALIZE"
+fi
+
+for f in "$OVERLAY"/hooks/normal/*.hook.chroot "$OVERLAY"/hooks/normal/*.hook.binary; do
+  [[ -f "$f" ]] || continue
+  cp -a "$f" config/hooks/normal/
+  chmod +x "config/hooks/normal/$(basename "$f")"
+done
+
+# Hooks emitted by merge-personalize-dropins into config/hooks/normal — ensure +x
+shopt -s nullglob
+for _h in "$BUILD_ROOT"/config/hooks/normal/9925-hyprcore-personalize-ssh.hook.chroot \
+	"$BUILD_ROOT"/config/hooks/normal/9930-hyprcore-personalize-services.hook.chroot \
+	"$BUILD_ROOT"/config/hooks/normal/9931-hyprcore-web-servers.hook.chroot; do
+  [[ -f "$_h" ]] && chmod +x "$_h"
+done
+shopt -u nullglob
+
+echo "Resetting bootstrap state (next lb build will rerun debootstrap)..."
+for _p in chroot "cache/bootstrap" "cache/packages.bootstrap"; do
+  if [[ -e "$_p" ]]; then
+    rm -rf "$_p" 2>/dev/null || sudo rm -rf "$_p"
+  fi
+done
+for _f in .build/bootstrap .build/bootstrap_cache.restore .build/bootstrap_cache.save; do
+  if [[ -e "$_f" ]]; then
+    rm -f "$_f" 2>/dev/null || sudo rm -f "$_f"
+  fi
+done
+
+echo "Configured: overlay merged into $BUILD_ROOT/config"
+echo "Artifacts (binary/, iso) go to: $BUILD_ROOT"
+echo "From here: cd $SCRIPT_ROOT && ./build.sh"

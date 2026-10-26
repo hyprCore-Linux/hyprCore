@@ -1,0 +1,41 @@
+#!/bin/sh
+# Fuzzel with hyprCore session env so menu-launched apps inherit GSK_RENDERER etc.
+#
+# Pin to the requested (or focused) monitor. Width/anchor come from fuzzel.ini
+# so the launcher stays a centered column, not a full-width bar.
+set -eu
+
+export PATH="${HOME}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+
+# Prefer an explicit --output= from the caller (e.g. Super overview → HDMI).
+_cli_out=""
+for _arg in "$@"; do
+	case "${_arg}" in
+		--output=*) _cli_out="${_arg#--output=}" ;;
+	esac
+done
+
+FUZZEL_ARGS=""
+if [ -z "${_cli_out}" ] && command -v hyprctl >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+	FUZZEL_ARGS="$(
+		hyprctl monitors -j 2>/dev/null | python3 -c '
+import json, sys
+try:
+    monitors = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+focused = next((m for m in monitors if m.get("focused")), None)
+if focused is None and monitors:
+    focused = monitors[0]
+name = (focused or {}).get("name") or ""
+if name:
+    print(f"--output={name}")
+' 2>/dev/null || true
+	)"
+fi
+
+# Drop any leftover chrome panel from the previous full-width layout.
+pkill -f hyprcore_fuzzel_panel.py >/dev/null 2>&1 || true
+
+# shellcheck disable=SC2086
+exec /usr/local/bin/hyprcore-launch fuzzel ${FUZZEL_ARGS} --layer=overlay "$@"

@@ -1,0 +1,64 @@
+# shellcheck shell=sh
+# Hyprland session environment — Layer B defaults for GTK/Qt/libadwaita apps.
+
+hyprcore_libadwaita_dark_mode() {
+	command -v python3 >/dev/null 2>&1 || return 0
+	DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS}" python3 - <<'PY' 2>/dev/null || true
+import gi
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio
+
+iface = Gio.Settings.new("org.gnome.desktop.interface")
+iface.set_string("color-scheme", "prefer-dark")
+iface.set_string("gtk-theme", "hyprcore")
+if iface.get_string("icon-theme") != "Papirus-Dark":
+    iface.set_string("icon-theme", "Papirus-Dark")
+PY
+}
+
+hyprcore_hyprland_session_env() {
+	export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+	export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
+	# User overrides must win. Prepending /usr/local/bin first hid ~/.local
+	# helpers and sent Waybar back to the stock centered dialogs.
+	_local_bin=""
+	if [ -n "${HOME:-}" ] && [ -d "${HOME}/.local/bin" ]; then
+		_local_bin="${HOME}/.local/bin:"
+	fi
+	export PATH="${_local_bin}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games${PATH:+:$PATH}"
+
+	export GTK_THEME=hyprcore
+	export GSK_RENDERER=cairo
+	export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
+	# Make Qt5/Qt6 apps follow GTK Adwaita-dark (Deskflow, VLC, …)
+	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-gtk3}"
+	export XDG_CURRENT_DESKTOP=Hyprland
+	export XDG_SESSION_DESKTOP=Hyprland
+	export GTK_ICON_THEME=Papirus-Dark
+	export XDG_ICON_THEME=Papirus-Dark
+
+	# XWayland for root/X11 GUI helpers (pkexec apps).
+	if [ -z "${DISPLAY:-}" ]; then
+		if [ -S /tmp/.X11-unix/X0 ]; then
+			export DISPLAY=:0
+		elif [ -S /tmp/.X11-unix/X1 ]; then
+			export DISPLAY=:1
+		fi
+	fi
+	if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+		if [ -S "${XDG_RUNTIME_DIR}/wayland-1" ]; then
+			export WAYLAND_DISPLAY=wayland-1
+		elif [ -S "${XDG_RUNTIME_DIR}/wayland-0" ]; then
+			export WAYLAND_DISPLAY=wayland-0
+		fi
+	fi
+
+	# Pointer size for GTK and XWayland. LibreOffice's generic toolkit ignores
+	# this and draws its own huge cursor unless the gtk3 plugin is installed.
+	export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+	if [ -f /usr/lib/libreoffice/program/libvclplug_gtk3lo.so ]; then
+		export SAL_USE_VCLPLUGIN=gtk3
+	fi
+
+	hyprcore_libadwaita_dark_mode
+}

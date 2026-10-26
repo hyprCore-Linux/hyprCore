@@ -1,0 +1,54 @@
+#!/bin/sh
+# Volume change with SwayOSD bar + short feedback beep at the new level.
+# Always adjusts the *active* output: sink currently playing audio, else default.
+# Usage: hyprcore-volume +5 | -5 | mute-toggle | raise | lower
+set -eu
+arg="${1:-+5}"
+
+# Resolve sink name. Prefer a sink that has streams; else Pulse/PipeWire default.
+active_sink() {
+	# sink-inputs short: INDEX\tSINK_INDEX\t...
+	si=$(pactl list short sink-inputs 2>/dev/null | awk 'NR==1 { print $2; exit }')
+	if [ -n "${si:-}" ]; then
+		name=$(pactl list short sinks 2>/dev/null | awk -v i="$si" '$1 == i { print $2; exit }')
+		if [ -n "${name:-}" ]; then
+			printf '%s\n' "$name"
+			return 0
+		fi
+	fi
+	pactl get-default-sink
+}
+
+sink=$(active_sink)
+# Point the session default at the active sink so SwayOSD / Waybar / new apps match.
+pactl set-default-sink "$sink" >/dev/null 2>&1 || true
+
+# SwayOSD --device= is unreliable on PipeWire; set default first, then adjust.
+case "$arg" in
+mute | mute-toggle)
+	swayosd-client --output-volume mute-toggle || wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+	;;
+raise)
+	swayosd-client --output-volume +5 || wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+	;;
+lower)
+	swayosd-client --output-volume -5 || wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+	;;
+*)
+	swayosd-client --output-volume "$arg" || {
+		case "$arg" in
+		+*) wpctl set-volume @DEFAULT_AUDIO_SINK@ "${arg#+}"%+ ;;
+		-*) wpctl set-volume @DEFAULT_AUDIO_SINK@ "${arg#-}"%- ;;
+		*) wpctl set-volume @DEFAULT_AUDIO_SINK@ "${arg}%" ;;
+		esac
+	}
+	;;
+esac
+
+sound=/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga
+[ -f "$sound" ] || exit 0
+if command -v paplay >/dev/null 2>&1; then
+	paplay "$sound" >/dev/null 2>&1 &
+elif command -v pw-play >/dev/null 2>&1; then
+	pw-play "$sound" >/dev/null 2>&1 &
+fi

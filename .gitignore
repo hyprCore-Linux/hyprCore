@@ -1,0 +1,20 @@
+# Local personalize overlay — never commit (may contain SSH keys / secrets)
+personalize
+
+# live-build work trees / artifacts (if created next to this repo)
+*.iso
+*.img
+.cache/
+__pycache__/
+*.py[cod]
+
+# Local toolchains and dependency trees
+.venv/
+node_modules/
+
+# Real secrets. Example files such as github-token.example stay in the tree.
+github-token
+.env
+*.pem
+id_rsa
+id_ed25519

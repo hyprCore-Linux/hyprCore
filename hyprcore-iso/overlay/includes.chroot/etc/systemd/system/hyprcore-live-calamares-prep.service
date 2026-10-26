@@ -1,0 +1,13 @@
+[Unit]
+Description=hyprCore live Calamares prep (DNS, welcome internet poll)
+DefaultDependencies=no
+After=NetworkManager.service systemd-resolved.service
+Before=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hyprcore-live-calamares-prep
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

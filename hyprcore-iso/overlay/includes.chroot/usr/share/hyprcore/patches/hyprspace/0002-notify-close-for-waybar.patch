@@ -1,0 +1,14 @@
+--- a/src/Overview.cpp
++++ b/src/Overview.cpp
+@@ -127,6 +127,11 @@
+ 
+     active = false;
+ 
++    // hyprCore: when overview closes itself (exitOnClick / swipe / …), restore
++    // Waybar that hyprcore-overview-toggle parked under the strip.
++    if (pHandle)
++        HyprlandAPI::invokeHyprctlCommand("dispatch", "exec hyprcore-overview-toggle sync");
++
+     // panel offset should be handled by swipe event when swiping
+     if (!swiping) {
+         *curYOffset = (Config::panelHeight + Config::reservedArea) * owner->m_scale;

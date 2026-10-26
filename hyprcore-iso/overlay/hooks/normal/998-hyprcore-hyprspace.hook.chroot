@@ -1,0 +1,175 @@
+#!/bin/sh
+# Build Hyprland plugins against the ISO Hyprland ABI and install .so files so
+# live sessions get titlebars (hyprbars) without compiling at first boot.
+# Packaged hyprland-plugin-hyprbars often lags the backports Hyprland ABI and
+# is not installable — build from source instead.
+# Alt+Tab is a GTK picker (hyprcore-window-switch), not a compositor plugin.
+#
+# hyprland-plugins main tracks the newest Hyprland; clone the matching vX.Y
+# tag so headers match hyprland-dev on the ISO.
+set -e
+
+PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/hyprland/plugins
+HYPRBARS_SO="${PLUGIN_DIR}/libhyprbars.so"
+
+_suite="$(. /etc/os-release 2>/dev/null && printf '%s' "${VERSION_CODENAME:-trixie}")"
+[ -n "${_suite}" ] || _suite="trixie"
+_backports="${_suite}-backports"
+
+if ! command -v apt-get >/dev/null 2>&1; then
+	echo "[hyprcore-hypr-plugins] skip: no apt-get" >&2
+	exit 0
+fi
+
+if ! command -v hyprctl >/dev/null 2>&1 && ! dpkg -s hyprland >/dev/null 2>&1; then
+	echo "[hyprcore-hypr-plugins] skip: hyprland not installed yet" >&2
+	exit 0
+fi
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y -t "${_backports}" \
+	hyprland-dev \
+	cmake g++ meson ninja-build pkg-config git patch \
+	libpixman-1-dev libpango1.0-dev libcairo2-dev \
+	libdrm-dev libinput-dev libudev-dev libwayland-dev libxkbcommon-dev \
+	|| {
+		echo "[hyprcore-hypr-plugins] WARNING: could not install build deps from ${_backports}" >&2
+		exit 0
+	}
+
+# Map hyprland 0.55.2+ds-1~bpo13+1 → try v0.55.2, v0.55.0, v0.55
+_hl_ver="$(dpkg-query -W -f='${Version}' hyprland 2>/dev/null || true)"
+_hl_ver="$(printf '%s' "${_hl_ver}" | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/')"
+_hl_mm="$(printf '%s' "${_hl_ver}" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')"
+
+_clone_hyprland_plugins() {
+	_dest="$1"
+	_tried=
+	for _tag in "v${_hl_ver}" "v${_hl_mm}.0" "v${_hl_mm}"; do
+		[ -n "${_tag}" ] && [ "${_tag}" != "v" ] && [ "${_tag}" != "v.0" ] || continue
+		case " ${_tried} " in
+			*" ${_tag} "*) continue ;;
+		esac
+		_tried="${_tried} ${_tag}"
+		echo "[hyprcore-hypr-plugins] cloning hyprland-plugins ${_tag}…"
+		if git clone --depth 1 --branch "${_tag}" \
+			https://github.com/hyprwm/hyprland-plugins.git "${_dest}" 2>/dev/null; then
+			return 0
+		fi
+		rm -rf "${_dest}"
+	done
+	echo "[hyprcore-hypr-plugins] WARNING: no matching hyprland-plugins tag for hyprland ${_hl_ver}; trying main" >&2
+	git clone --depth 1 https://github.com/hyprwm/hyprland-plugins.git "${_dest}" 2>/dev/null
+}
+
+_workdir="$(mktemp -d)"
+cleanup() { rm -rf "${_workdir}"; }
+trap cleanup EXIT
+
+mkdir -p "${PLUGIN_DIR}"
+
+# --- hyprbars (titlebar + hyprCore gradient / bar_image) ---
+# Prefer staged Packages/hyprbars (setup.sh → /usr/src/hyprcore/hyprbars).
+# Fall back to upstream hyprland-plugins tag matching the ISO Hyprland.
+HYPRBARS_SRC=/usr/src/hyprcore/hyprbars
+HYPRBARS_SO_LOCAL=/usr/local/lib/hyprland/plugins/libhyprbars.so
+_hb_built=
+if [ -f "${HYPRBARS_SRC}/Makefile" ] || [ -f "${HYPRBARS_SRC}/CMakeLists.txt" ]; then
+	mkdir -p /usr/local/lib/hyprland/plugins /usr/share/hyprcore/hyprbars
+	_hb_build="${_workdir}/hyprbars-build"
+	mkdir -p "${_hb_build}"
+	if [ -f "${HYPRBARS_SRC}/Makefile" ]; then
+		# Build in a copy so make's in-tree .so does not dirty the staged sources.
+		cp -a "${HYPRBARS_SRC}/." "${_hb_build}/"
+		if make -C "${_hb_build}" all; then
+			install -m 0755 "${_hb_build}/hyprbars.so" "${HYPRBARS_SO}"
+			install -m 0755 "${_hb_build}/hyprbars.so" "${HYPRBARS_SO_LOCAL}"
+			_hb_built=1
+			echo "[hyprcore-hypr-plugins] installed hyprCore hyprbars → ${HYPRBARS_SO_LOCAL}"
+		fi
+	fi
+	if [ -z "${_hb_built}" ] && [ -f "${HYPRBARS_SRC}/CMakeLists.txt" ]; then
+		if cmake -S "${HYPRBARS_SRC}" -B "${_hb_build}/cmake" -DCMAKE_BUILD_TYPE=Release \
+			&& cmake --build "${_hb_build}/cmake" -j"$(nproc 2>/dev/null || echo 2)"; then
+			_so="$(find "${_hb_build}/cmake" -name 'libhyprbars.so' -o -name 'hyprbars.so' | head -1)"
+			if [ -n "${_so}" ]; then
+				install -m 0755 "${_so}" "${HYPRBARS_SO}"
+				install -m 0755 "${_so}" "${HYPRBARS_SO_LOCAL}"
+				_hb_built=1
+				echo "[hyprcore-hypr-plugins] installed hyprCore hyprbars (cmake) → ${HYPRBARS_SO_LOCAL}"
+			fi
+		fi
+	fi
+	if [ -f "${HYPRBARS_SRC}/examples/tile-check.png" ]; then
+		install -m 0644 "${HYPRBARS_SRC}/examples/tile-check.png" \
+			/usr/share/hyprcore/hyprbars/tile-check.png
+	fi
+	[ -n "${_hb_built}" ] || echo "[hyprcore-hypr-plugins] WARNING: staged hyprbars build failed" >&2
+fi
+if [ -z "${_hb_built}" ]; then
+	if _clone_hyprland_plugins "${_workdir}/hyprland-plugins"; then
+		cd "${_workdir}/hyprland-plugins/hyprbars"
+		if make all; then
+			install -m 0755 hyprbars.so "${HYPRBARS_SO}"
+			mkdir -p /usr/local/lib/hyprland/plugins
+			install -m 0755 hyprbars.so "${HYPRBARS_SO_LOCAL}"
+			echo "[hyprcore-hypr-plugins] installed upstream hyprbars → ${HYPRBARS_SO}"
+		else
+			echo "[hyprcore-hypr-plugins] WARNING: hyprbars build failed" >&2
+		fi
+	else
+		echo "[hyprcore-hypr-plugins] WARNING: hyprland-plugins clone failed (network?)" >&2
+	fi
+fi
+
+# --- hyprframes (PNG window frames; hyprCore-maintained 0.55.2 port) ---
+# Source is copied into the chroot by hyprcore-iso/setup.sh from Packages/hyprframes.
+HYPRFRAMES_SRC=/usr/src/hyprcore/hyprframes
+HYPRFRAMES_SO_LOCAL=/usr/local/lib/hyprland/plugins/libhyprframes.so
+HYPRFRAMES_SO="${PLUGIN_DIR}/libhyprframes.so"
+if [ -f "${HYPRFRAMES_SRC}/CMakeLists.txt" ]; then
+	_ib_build="${_workdir}/hyprframes-build"
+	mkdir -p "${_ib_build}" /usr/local/lib/hyprland/plugins \
+		/usr/share/hyprcore/hyprframes
+	if cmake -S "${HYPRFRAMES_SRC}" -B "${_ib_build}" \
+		-DCMAKE_BUILD_TYPE=Release \
+		&& cmake --build "${_ib_build}" -j"$(nproc 2>/dev/null || echo 2)"; then
+		_so="${_ib_build}/libhyprframes.so"
+		if [ -f "${_so}" ]; then
+			install -m 0755 "${_so}" "${HYPRFRAMES_SO}"
+			install -m 0755 "${_so}" "${HYPRFRAMES_SO_LOCAL}"
+			echo "[hyprcore-hypr-plugins] installed ${HYPRFRAMES_SO_LOCAL}"
+		fi
+	else
+		echo "[hyprcore-hypr-plugins] WARNING: hyprframes build failed" >&2
+	fi
+	if [ -f "${HYPRFRAMES_SRC}/example.png" ]; then
+		install -m 0644 "${HYPRFRAMES_SRC}/example.png" \
+			/usr/share/hyprcore/hyprframes/example.png
+	fi
+else
+	echo "[hyprcore-hypr-plugins] WARNING: no ${HYPRFRAMES_SRC} (setup.sh did not stage hyprframes)" >&2
+fi
+
+# --- hyprtabs (screen-top window tabs; hyprCore) ---
+HYPRTABS_SRC=/usr/src/hyprcore/hyprtabs
+HYPRTABS_SO_LOCAL=/usr/local/lib/hyprland/plugins/libhyprtabs.so
+HYPRTABS_SO="${PLUGIN_DIR}/libhyprtabs.so"
+if [ -f "${HYPRTABS_SRC}/Makefile" ]; then
+	_ht_build="${_workdir}/hyprtabs-build"
+	mkdir -p "${_ht_build}" /usr/local/lib/hyprland/plugins
+	cp -a "${HYPRTABS_SRC}/." "${_ht_build}/"
+	if make -C "${_ht_build}" -j"$(nproc 2>/dev/null || echo 2)"; then
+		_so="${_ht_build}/hyprtabs.so"
+		if [ -f "${_so}" ]; then
+			install -m 0755 "${_so}" "${HYPRTABS_SO}"
+			install -m 0755 "${_so}" "${HYPRTABS_SO_LOCAL}"
+			echo "[hyprcore-hypr-plugins] installed ${HYPRTABS_SO_LOCAL}"
+		fi
+	else
+		echo "[hyprcore-hypr-plugins] WARNING: hyprtabs build failed" >&2
+	fi
+else
+	echo "[hyprcore-hypr-plugins] WARNING: no ${HYPRTABS_SRC} (setup.sh did not stage hyprtabs)" >&2
+fi
+
+exit 0

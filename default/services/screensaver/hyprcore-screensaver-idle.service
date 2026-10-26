@@ -1,0 +1,16 @@
+[Unit]
+Description=hyprCore idle screensaver (launch after inactivity)
+After=default.target
+PartOf=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/lib/hyprcore/services/screensaver
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+PassEnvironment=WAYLAND_DISPLAY DISPLAY XDG_SESSION_TYPE
+ExecStart=/usr/local/lib/hyprcore/services/screensaver/idle_daemon.py --config %h/.config/hyprcore-screensaver/config.ini
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

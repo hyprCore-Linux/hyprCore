@@ -1,0 +1,14 @@
+#!/bin/sh
+# Ensure hyprCore helper scripts stay executable after include (Dropbox strips +x).
+
+set -e
+
+find /usr/local/bin /usr/local/sbin /usr/local/libexec /usr/share/hyprcore -type f \( \
+	-name 'hyprcore-*' -o -name 'gparted' -o -name 'synaptic' \
+	-o -name 'synaptic-pkexec' -o -name '*.sh' \
+\) -exec chmod 0755 {} + 2>/dev/null || true
+
+# Session start must be runnable from Hyprland exec-once
+if [ -f /usr/share/hyprcore/hyprcore-hyprland-session-start.sh ]; then
+	chmod 0755 /usr/share/hyprcore/hyprcore-hyprland-session-start.sh
+fi

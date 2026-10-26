@@ -1,0 +1,41 @@
+/* hyprCore: more breathing room inside Zenity / Adw message dialogs.
+ * Hyprland gaps pad between windows; this pads content inside dialog chrome. */
+
+window.messagedialog .message-area > .child {
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-bottom: 14px;
+}
+
+window.messagedialog .message-area > .heading-bin,
+window.messagedialog .message-area > .body {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+window.messagedialog .message-area {
+  padding-top: 28px;
+}
+
+window.messagedialog .response-area {
+  padding: 20px 28px 28px 28px;
+}
+
+#zenity_tree_box,
+#zenity_calendar_box {
+  margin: 4px 8px 10px 8px;
+}
+
+#zenity_tree_cv listview cell {
+  padding: 8px 14px;
+}
+
+/* Selected rows: child labels ignore inherited cream fg on the orange chip. */
+*:selected, *:selected *,
+row:selected, row:selected *,
+listview > row:selected, listview > row:selected *,
+gridview > child:selected, gridview > child:selected *,
+columnview row:selected, columnview row:selected *,
+.view:selected, .view:selected * {
+  color: #1d2021;
+}

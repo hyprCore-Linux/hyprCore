@@ -1,0 +1,8 @@
+#!/bin/sh
+# Launch a command with full hyprCore Hyprland session environment.
+if [ -r /usr/share/hyprcore/hyprcore-hyprland-session-env.sh ]; then
+	# shellcheck source=/usr/share/hyprcore/hyprcore-hyprland-session-env.sh
+	. /usr/share/hyprcore/hyprcore-hyprland-session-env.sh
+	hyprcore_hyprland_session_env
+fi
+exec "$@"

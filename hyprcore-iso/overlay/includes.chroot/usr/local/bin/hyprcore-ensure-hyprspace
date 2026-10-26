@@ -1,0 +1,164 @@
+#!/bin/sh
+# Ensure the ISO-patched Hyprspace is loaded (not an unpatched hyprpm build).
+# Upstream Hyprspace + drawActiveWorkspace=false leaves a black/grey active tile
+# on Hyprland 0.55; our .so stub-renders that workspace instead.
+#
+# Runs from hyprland.conf exec-once, session-start, and every Super overview open.
+# Retries + delayed re-apply beat hyprpm reload races that reintroduce black tiles.
+set -eu
+
+MARKER="${HOME}/.config/hypr/.hyprcore-hyprspace-ok"
+PLUGIN_SO="/usr/lib/x86_64-linux-gnu/hyprland/plugins/Hyprspace.so"
+mkdir -p "${HOME}/.config/hypr"
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+_uid="$(id -u)"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/${_uid}}"
+
+if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -d "${XDG_RUNTIME_DIR}/hypr" ]; then
+	HYPRLAND_INSTANCE_SIGNATURE="$(
+		find "${XDG_RUNTIME_DIR}/hypr" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | head -n1
+	)"
+	export HYPRLAND_INSTANCE_SIGNATURE
+fi
+
+command -v hyprctl >/dev/null 2>&1 || exit 0
+
+# Wait until hyprctl can talk to this session (login race).
+_w=0
+while [ "${_w}" -lt 50 ]; do
+	if hyprctl version >/dev/null 2>&1; then
+		break
+	fi
+	_w=$((_w + 1))
+	sleep 0.1
+done
+hyprctl version >/dev/null 2>&1 || exit 0
+
+_loaded() {
+	hyprctl plugin list 2>/dev/null | grep -qi Hyprspace
+}
+
+_unload_all_hyprspace() {
+	# Drop every loaded Hyprspace copy (ISO path or hyprpm cache) so the patched
+	# ISO build always wins — hyprpm reload can race and reintroduce black tiles.
+	hyprctl plugin unload "${PLUGIN_SO}" >/dev/null 2>&1 || true
+	for _p in \
+		"${HOME}/.local/share/hyprpm/"*/Hyprspace/Hyprspace.so \
+		"${HOME}/.local/share/hyprpm/"*/hyprspace/Hyprspace.so \
+		/usr/lib/x86_64-linux-gnu/hyprland/plugins/Hyprspace.so
+	do
+		[ -f "${_p}" ] || continue
+		hyprctl plugin unload "${_p}" >/dev/null 2>&1 || true
+	done
+}
+
+_iso_plugin_loaded() {
+	# True when Hyprspace is loaded from the ISO path (handle line alone is not enough).
+	hyprctl plugin list 2>/dev/null | grep -qi Hyprspace || return 1
+	# If a hyprpm copy is also present we still force ISO reload below.
+	return 0
+}
+
+_ensure_hyprpaper() {
+	# Plugin unload/reload can kill hyprpaper → solid black desk under overview.
+	command -v hyprpaper >/dev/null 2>&1 || return 0
+	if pgrep -x hyprpaper >/dev/null 2>&1; then
+		return 0
+	fi
+	nohup hyprpaper >/dev/null 2>&1 &
+	sleep 0.15
+}
+
+_load_iso_plugin() {
+	[ -f "${PLUGIN_SO}" ] || return 1
+	_unload_all_hyprspace
+	hyprctl plugin load "${PLUGIN_SO}" >/dev/null 2>&1 || true
+	_ensure_hyprpaper
+	_loaded
+}
+
+_apply_defaults() {
+	if [ -x /usr/local/bin/hyprcore-overview-defaults ]; then
+		/usr/local/bin/hyprcore-overview-defaults >/dev/null 2>&1 || true
+	fi
+	# Always re-assert the black-desk killers after any defaults pass.
+	hyprctl keyword plugin:overview:hideRealLayers false >/dev/null 2>&1 || true
+	hyprctl keyword plugin:overview:hideBackgroundLayers false >/dev/null 2>&1 || true
+	_ensure_hyprpaper
+}
+
+_ensure_once() {
+	# Soft path: already loaded → only re-apply defaults (do NOT unload/reload —
+	# that kills hyprpaper and makes Super overview flash solid black).
+	if _loaded; then
+		touch "${MARKER}"
+		_apply_defaults
+		return 0
+	fi
+	if _load_iso_plugin; then
+		touch "${MARKER}"
+		_apply_defaults
+		return 0
+	fi
+	return 1
+}
+
+# Prefer ISO patched .so every time (even if something else already loaded).
+if _ensure_once; then
+	# Delayed re-assert: hyprpm reload -n often finishes after the first pass.
+	(
+		sleep 2
+		_ensure_once || true
+		sleep 3
+		_ensure_once || true
+	) >/dev/null 2>&1 &
+	exit 0
+fi
+
+command -v hyprpm >/dev/null 2>&1 || exit 0
+
+# Avoid enabling upstream Hyprspace via hyprpm when we have no ISO .so —
+# building from hyprpm is a last resort and lacks hyprCore patches.
+if [ ! -f "${PLUGIN_SO}" ]; then
+	if hyprpm list 2>/dev/null | grep -A1 'Plugin Hyprspace' | grep -q 'enabled:.*true'; then
+		hyprpm reload -n 2>/dev/null || true
+	fi
+	if _loaded; then
+		touch "${MARKER}"
+		_apply_defaults
+		exit 0
+	fi
+fi
+
+if [ -f "${MARKER}" ]; then
+	hyprpm reload -n 2>/dev/null || true
+	_load_iso_plugin || true
+	_apply_defaults
+	exit 0
+fi
+
+if ! command -v cmake >/dev/null 2>&1 || ! command -v g++ >/dev/null 2>&1; then
+	exit 0
+fi
+if ! command -v meson >/dev/null 2>&1; then
+	exit 0
+fi
+if ! pkg-config --exists pixman-1 pangocairo 2>/dev/null; then
+	exit 0
+fi
+
+hyprpm update >/dev/null 2>&1 || true
+if ! hyprpm list 2>/dev/null | grep -q 'Repository Hyprspace'; then
+	printf 'Y\n' | hyprpm add https://github.com/KZDKM/Hyprspace >/dev/null 2>&1 || true
+fi
+if hyprpm list 2>/dev/null | grep -A1 'Plugin Hyprspace' | grep -qi 'failed to build'; then
+	hyprpm update -f >/dev/null 2>&1 || true
+fi
+hyprpm enable Hyprspace >/dev/null 2>&1 || true
+hyprpm reload -n >/dev/null 2>&1 || true
+# ISO patched .so still preferred when present
+_load_iso_plugin || true
+_apply_defaults
+touch "${MARKER}"
+exit 0

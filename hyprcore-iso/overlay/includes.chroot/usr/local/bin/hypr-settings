@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# The Qt settings app now opens inside the Waybar settings window.
+set -euo pipefail
+arg="${1:-}"
+arg="${arg#--}"
+if [[ -n "$arg" ]]; then
+	exec hyprcore-settings "$arg"
+fi
+exec hyprcore-settings

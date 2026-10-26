@@ -1,0 +1,66 @@
+# hyprCore default GTK apps
+
+Prebuilt release binaries for hyprCore daily apps (GTK4 suite). Staged into the ISO
+by `hyprcore-iso/setup.sh` → `/usr/local/lib/hyprcore/gtk-apps/` + `/usr/local/bin/`
+wrappers and `/usr/share/applications/` desktop files.
+
+| Binary / tree | Role |
+|---------------|------|
+| `gtk-term` | Terminal (Super+Return) |
+| `gtk-files` | File manager (Super+E) |
+| `gtk-edit` | Text editor |
+| `gtk-calc` | Calculator |
+| `gtk-colors` | Color palette helper (`apps/gtk-colors/` + `bin/gtk-colors` wrapper) |
+| `gtk-calendar` | Month calendar (`apps/gtk-calendar/` + `bin/gtk-calendar` wrapper): Google sign-in and `.ics` |
+| `gtk-emoji` | Emoji picker (`apps/gtk-emoji/` + `bin/gtk-emoji` wrapper): search, recent, clipboard |
+| `gtk-image` | Image viewer |
+| `gtk-video` | Video trimmer (in/out on the timeline, crop/rotate/flip, export selection) |
+| `gtk-player` | Audio and video player (playlist, loop track, loop playlist, A–B handles on the time bar) |
+| `gtk-theme-editor` | Suite color profile editor (Profile → Custom…) |
+| `gtk-theme/` | Shared theme data (`profiles.json`, python helpers). The Rust crate is **statically linked** into each app; this tree is still required for tooling and reference profiles. |
+| `gtk-sync/` | LAN file sync installer used by gtk-files (Setup Sync): `install.sh` / `uninstall.sh`, systemd units, and prebuilt `target/release/gtk-sync{,-client}` so setup works without cargo on the ISO. |
+| `hide/` | `NoDisplay` stubs (`thunar`, `yelp`) staged to `/usr/local/share/applications/` |
+| `skel-config/theme.toml` | Stock `~/.config/gtk-apps/theme.toml` when personalize does not supply configs/gtk-apps |
+
+Configs editing is in **hypr-settings** Appearance (not a separate gtk-configs app).
+
+Refresh after rebuilding the suite (from the gtk-apps source checkout):
+
+```bash
+./syn-to-devices.sh
+# or, if auto-detect fails:
+./syn-to-devices.sh --linuxos ../..
+```
+
+That script copies the default suite into this tree and KvNix extras into
+`../../KvNix/personalize/gtk-apps/`.
+
+Do **not** put personal settings here — use `personalize/configs/gtk-apps/`.
+Extra / override binaries: drop them in `personalize/gtk-apps/` (same `bin/` +
+`applications/` layout); the personalize merge overlays them onto the ISO after
+this tree is staged.
+
+## MIME / terminal defaults
+
+ISO skel ships:
+
+- `~/.config/mimeapps.list` — gtk-edit / gtk-image / gtk-files / zathura / mpv / xarchiver / Chrome
+- `~/.config/xdg-terminals.list` — gtk-term
+- `~/.local/bin/x-terminal-emulator` → `/usr/local/bin/gtk-term-launch.sh`
+- chroot hook `1001-x-terminal-emulator` — Debian `update-alternatives`
+
+Re-apply on a running system:
+
+```bash
+/usr/share/hyprcore/gtk-apps/install-defaults.sh
+```
+
+Verify:
+
+```bash
+xdg-mime query default text/plain
+xdg-mime query default image/png
+xdg-mime query default inode/directory
+cat ~/.config/xdg-terminals.list
+readlink -f "$(command -v x-terminal-emulator)"
+```

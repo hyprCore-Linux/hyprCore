@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=hyprCore (Hyprland)
+Comment=hyprCore Wayland desktop
+Exec=/usr/share/hyprcore/hyprcore-hyprland-session.sh
+Type=Application
+DesktopNames=Hyprland

@@ -1,0 +1,20 @@
+# hyprCore default services
+
+Stock services staged via `share/merge-personalize-dropins.sh`
+(`default/services` first; `personalize/services` overlays same names).
+
+A service directory with `SCOPE=desktop` is skipped when the overlay is a
+server tree (`personalize-server`, or `HYPRCORE_LIVE_HOSTNAME=*-server`).
+Calamares **Server** profile also strips remux / screensaver / gtksync /
+activeuser (and `ydotool`) if they were on the live squashfs. HostReporter stays.
+
+Each `<name>/` → `/usr/local/lib/hyprcore/services/<name>/`. Chroot hook
+`9930-hyprcore-personalize-services.hook.chroot` runs each `install.sh`.
+
+| Service | SCOPE | Notes |
+|---------|-------|--------|
+| gtksync | desktop | Waybar `custom/gtk-sync` status/menu for gtk-sync-client |
+| screensaver | desktop | GTK4 idle screensaver (`hyprcore-screensaver-idle` user unit) |
+
+KvNix desktop personalize adds remux and activeuser (desktop) plus hostreporter
+(both profiles). See `personalize.example/services/` for the drop-in contract.

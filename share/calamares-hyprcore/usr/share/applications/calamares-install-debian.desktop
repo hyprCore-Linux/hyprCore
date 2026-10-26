@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Install hyprCore
+GenericName=Calamares Installer
+Exec=hyprcore-calamares-live
+Comment=Installer for hyprCore Live
+Keywords=calamares;system;install;hyprcore;installer
+Icon=hyprcore-console
+Terminal=false
+Categories=Qt;System;
+StartupWMClass=calamares
+StartupNotify=True

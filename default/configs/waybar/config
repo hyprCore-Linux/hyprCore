@@ -1,0 +1,159 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 42,
+  "margin-top": 12,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 0,
+  "modules-left": [
+    "image#menu",
+    "hyprland/window"
+  ],
+  "modules-center": [
+    "hyprland/workspaces",
+    "custom/layout"
+  ],
+  "modules-right": [
+    "clock",
+    "custom/weather",
+    "custom/gtk-sync",
+    "image#volume",
+    "image#memory",
+    "battery",
+    "network",
+    "image#cpu",
+    "tray",
+    "custom/settings",
+    "custom/power"
+  ],
+  "image#menu": {
+    "exec": "$HOME/.config/waybar/scripts/face-circle.py",
+    "size": 28,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-fuzzel"
+  },
+  "custom/settings": {
+    "format": "\uf013",
+    "tooltip": "Settings",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click settings"
+  },
+  "custom/power": {
+    "format": "\uf011",
+    "tooltip": "Power",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click power"
+  },
+  "custom/layout": {
+    "exec": "$HOME/.config/hypr/window-manager.py layout-status",
+    "return-type": "json",
+    "interval": "once",
+    "signal": 8,
+    "format": "{}",
+    "tooltip": true,
+    "on-click": "$HOME/.config/hypr/window-manager.py layout-toggle"
+  },
+  "custom/gtk-sync": {
+    "exec": "$HOME/.config/waybar/gtk-sync-status.sh",
+    "return-type": "json",
+    "interval": 3,
+    "format": "{}",
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click sync",
+    "on-click-right": "$HOME/.config/waybar/gtk-sync-status.sh"
+  },
+  "hyprland/workspaces": {
+    "format": "{id}",
+    "on-click": "activate",
+    "persistent-workspaces": {
+      "HDMI-A-1": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "eDP-1": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "DP-3": [
+        11
+      ],
+      "DP-4": [
+        12
+      ]
+    }
+  },
+  "hyprland/window": {
+    "format": "{}",
+    "max-length": 48,
+    "separate-outputs": true
+  },
+  "image#volume": {
+    "exec": "$HOME/.config/waybar/scripts/stat-ring.py volume",
+    "size": 28,
+    "interval": 1,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click volume",
+    "on-scroll-up": "hyprcore-volume +5",
+    "on-scroll-down": "hyprcore-volume -5",
+    "on-click-middle": "hyprcore-volume mute-toggle"
+  },
+  "network": {
+    "format-wifi": "\uf1eb",
+    "format-ethernet": "\uf1e6",
+    "format-disconnected": "\uf071",
+    "tooltip-format-wifi": "{essid} {signalStrength}%",
+    "tooltip-format-ethernet": "{ifname}",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click network"
+  },
+  "image#cpu": {
+    "exec": "$HOME/.config/waybar/scripts/stat-ring.py cpu",
+    "size": 28,
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click cpu",
+    "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click btop"
+  },
+  "image#memory": {
+    "exec": "$HOME/.config/waybar/scripts/stat-ring.py memory",
+    "size": 28,
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click memory",
+    "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click btop"
+  },
+  "battery": {
+    "format": "{capacity}%",
+    "format-charging": "{capacity}% \uf0e7",
+    "format-plugged": "{capacity}%",
+    "format-icons": [
+      "\uf244",
+      "\uf243",
+      "\uf242",
+      "\uf241",
+      "\uf240"
+    ],
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click battery"
+  },
+  "custom/weather": {
+    "exec": "$HOME/.config/waybar/weather.sh",
+    "return-type": "json",
+    "interval": 600,
+    "format": "{}",
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click weather"
+  },
+  "clock": {
+    "interval": 30,
+    "format": "{:%a %b %d  %I:%M %p}",
+    "tooltip": false,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click datetime",
+    "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-datetime"
+  },
+  "tray": {
+    "spacing": 6,
+    "icon-size": 16
+  }
+}

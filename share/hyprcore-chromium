@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Launch Debian Chromium with hyprCore unpacked extensions (if staged).
+#
+# Chrome/Chromium 137+ ignore --load-extension unless
+# DisableLoadExtensionCommandLineSwitch is turned off.
+set -euo pipefail
+EXT_ROOT="/usr/share/hyprcore/browser-extensions"
+LOAD_ARGS=()
+if [[ -d "$EXT_ROOT" ]]; then
+	shopt -s nullglob
+	for d in "$EXT_ROOT"/*/; do
+		[[ -f "$d/manifest.json" ]] || continue
+		LOAD_ARGS+=("$(realpath "$d")")
+	done
+	shopt -u nullglob
+fi
+CHROME=""
+for c in chromium chromium-browser; do
+	if command -v "$c" >/dev/null 2>&1; then
+		CHROME="$c"
+		break
+	fi
+done
+if [[ -z "$CHROME" ]]; then
+	echo "hyprcore-chromium: chromium not found in PATH" >&2
+	exit 1
+fi
+EXTRA=(--disable-features=DisableLoadExtensionCommandLineSwitch)
+if [[ ${#LOAD_ARGS[@]} -gt 0 ]]; then
+	IFS=,
+	exec "$CHROME" "${EXTRA[@]}" --load-extension="${LOAD_ARGS[*]}" "$@"
+fi
+exec "$CHROME" "$@"

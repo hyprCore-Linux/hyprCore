@@ -1,0 +1,39 @@
+# Screensaver
+
+Fullscreen GTK4 screensaver for Wayland (and X11). Covers every connected monitor.
+
+Staged as KvNix personalize service → `/usr/local/lib/hyprcore/services/screensaver/`
+on the ISO (no Dropbox paths).
+
+## Manual run
+
+```bash
+/usr/local/lib/hyprcore/services/screensaver/screensaver.py
+/usr/local/lib/hyprcore/services/screensaver/screensaver.py --mode aurora
+```
+
+## Idle service
+
+systemd user unit `hyprcore-screensaver-idle` launches after **5 minutes** without
+keyboard/mouse input (evdev). Unplugged receivers are dropped (a hung fd would
+otherwise pin a CPU core). Config: `~/.config/hyprcore-screensaver/config.ini` (also editable in
+**hypr-settings → Screensaver**, or `hypr-settings --screensaver`).
+
+```ini
+[idle]
+seconds = 300
+
+[screensaver]
+mode = clock
+```
+
+```bash
+systemctl --user status hyprcore-screensaver-idle
+journalctl --user -u hyprcore-screensaver-idle -f
+```
+
+## Prerequisites
+
+- `python3-evdev`, `python3-gi`, `python3-cairo`, `python3-gi-cairo`, `gir1.2-gtk-4.0`
+- `gir1.2-gtk4layershell-1.0` (overlay layer so floating windows cannot sit on top)
+- User in the `input` group (Calamares `hyprcore-add-user-input-group.sh`)
