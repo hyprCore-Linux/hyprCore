@@ -287,13 +287,13 @@ main() {
 				_msg "${_bold}Usage:${_reset}"
 				_msg "  ./build.sh              # keep apt package cache (faster rebuilds)"
 				_msg "  ./build.sh --clean      # also delete cache/ (full re-download)"
-				_msg "  ./build.sh --lists-only # regenerate package lists under /tmp, then stop"
+				_msg "  ./build.sh --lists-only # regenerate package lists under /var/tmp, then stop"
 				_msg ""
 				_msg "Regenerates package lists from install-list, runs package preflight"
 				_msg "(validate-manifest.sh), then live-build."
 				_msg "Each run re-merges overlay/config and rebuilds the ISO from current"
 				_msg "Debian indexes; cached .debs are reused when versions still match."
-				_msg "Requires sudo for live-build. All generated files stay under /tmp"
+				_msg "Requires sudo for live-build. All generated files stay under /var/tmp"
 				_msg "(personalize metadata cannot redirect the tree into a git checkout)."
 				exit 0
 				;;
@@ -338,7 +338,7 @@ main() {
 	else
 		_warn "Metadata not found; using /tmp build staging."
 	fi
-	# All generated files (lists, overlay merge, live-build, ISO) stay in /tmp.
+	# All generated files (lists, overlay merge, live-build, ISO) stay in /var/tmp.
 	unset HYPRCORE_BUILD_ROOT_DEFAULT
 	hyprcore_apply_build_staging "${HYPRCORE_BUILD_ROOT:-}"
 	build_root="$HYPRCORE_BUILD_ROOT"
