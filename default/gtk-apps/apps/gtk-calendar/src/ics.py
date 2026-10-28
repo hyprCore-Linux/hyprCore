@@ -129,7 +129,7 @@ def fetch_ics_text(url: str, timeout: int = 45) -> str:
         target,
         headers={
             "User-Agent": (
-                "Mozilla/5.0 gtk-calendar/1.0 (hyprCore GTK-Apps) "
+                "Mozilla/5.0 gtk-calendar/1.0 (hyprCore Linux) "
                 "AppleWebKit/537.36 (KHTML, like Gecko)"
             ),
             "Accept": "text/calendar, text/plain, */*",

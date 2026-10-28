@@ -1,14 +1,14 @@
 # gtk-configs
 
-GTK4 Python editor for hyprCore config trees (`~/configs` or any `--root`).
+GTK4 Python editor for hyprCore Linux config trees (`~/configs` or any `--root`).
 
-Created by Kevin Hinds — [github.com/hyprCoreOS/GTK-Apps](https://github.com/hyprCoreOS/GTK-Apps)
+Created by Kevin Hinds
 
 ## Local run
 
 ```bash
 cd gtk-configs
-python3 configs.py --root /path/to/hyprCore/Build/default/configs
+python3 configs.py --root ~/configs
 ```
 
 Default without `--root` edits `~/configs` (merged live tree).
@@ -25,3 +25,7 @@ Default without `--root` edits `~/configs` (merged live tree).
 
 - `python3-gi`, `gir1.2-gtk-4.0`
 - Optional: `gir1.2-gtksource-5`
+
+## License
+
+GNU General Public License v3.0. See [LICENSE](LICENSE).

@@ -38,9 +38,9 @@ def _ensure_gtk_theme_on_path() -> None:
         p = p.parent
     cands.extend(
         (
-            Path("/usr/local/lib/hyprcore/gtk-apps/gtk-theme/python"),
-            Path("/usr/local/lib/hyprcore/gtk-apps/python"),
-            Path("/usr/share/hyprcore/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/python"),
+            Path("/usr/share/neuronix/gtk-theme/python"),
         )
     )
     for d in cands:
@@ -81,7 +81,7 @@ class ConfigsWindow(Gtk.ApplicationWindow):
                     self,
                     header,
                     about_name="GTK Configs",
-                    about_comments="hyprCore config tree editor for Hyprland, Waybar, Fuzzel, Mako, and more.",
+                    about_comments="hyprCore Linux config tree editor for Hyprland, Waybar, Fuzzel, Mako, and more.",
                 )
             except Exception:
                 pass

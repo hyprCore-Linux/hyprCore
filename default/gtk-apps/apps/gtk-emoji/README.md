@@ -83,7 +83,7 @@ The service uses the following Python packages:
 
 ## License
 
-This project is open source. Feel free to modify and distribute as needed.
+GNU General Public License v3.0. See [LICENSE](LICENSE).
 
 ## Contributing
 

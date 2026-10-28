@@ -27,9 +27,9 @@ def _ensure_gtk_theme_on_path() -> None:
         p = p.parent
     cands.extend(
         (
-            Path("/usr/local/lib/hyprcore/gtk-apps/gtk-theme/python"),
-            Path("/usr/local/lib/hyprcore/gtk-apps/python"),
-            Path("/usr/share/hyprcore/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/python"),
+            Path("/usr/share/neuronix/gtk-theme/python"),
         )
     )
     for d in cands:
@@ -46,7 +46,7 @@ def _ensure_gtk_theme_on_path() -> None:
 _ensure_gtk_theme_on_path()
 import gtk_theme  # noqa: E402
 
-APP_ID = "org.hyprcore.GtkColors"
+APP_ID = "org.neuronix.GtkColors"
 
 PALETTE_MODES = (
     ("similar", "5 similar (analogous hues)"),
@@ -81,7 +81,7 @@ class ColorsWindow(Gtk.ApplicationWindow):
             self,
             header,
             about_name="GTK Colors",
-            about_comments="Color picker and format converter for the hyprCore GTK-Apps suite.",
+            about_comments="Color picker and format converter for the hyprCore Linux GTK apps.",
         )
 
         scrolled = Gtk.ScrolledWindow()

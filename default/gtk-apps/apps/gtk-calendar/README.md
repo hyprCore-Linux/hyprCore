@@ -1,8 +1,8 @@
 # gtk-calendar
 
-GTK4 month calendar for the hyprCore GTK-Apps suite. Sign in to Google Calendar and/or load `.ics` files and `webcal://` / `https://` feeds.
+GTK4 month calendar for the hyprCore Linux GTK apps. Sign in to Google Calendar and/or load `.ics` files and `webcal://` / `https://` feeds.
 
-Created by Kevin Hinds — [github.com/hyprCoreOS/GTK-Apps](https://github.com/hyprCoreOS/GTK-Apps)
+Created by Kevin Hinds
 
 ## Features
 
@@ -16,7 +16,7 @@ Created by Kevin Hinds — [github.com/hyprCoreOS/GTK-Apps](https://github.com/h
 ```bash
 ./start.sh
 # or
-../build-launch.sh gtk-calendar
+~/DevTools/LinuxOS/build-launch.sh gtk-calendar
 ```
 
 Config lives under `~/.config/gtk-apps/gtk-calendar/` (`config.json`, `google-token.json`). Token and client secret files are mode `0600`.
@@ -32,10 +32,14 @@ Without Google libraries installed, `.ics` sources still work.
 ## Dependencies
 
 ```bash
-# Debian / Ubuntu / hyprCore
+# Debian / Ubuntu / hyprCore Linux
 sudo apt-get install python3-gi gir1.2-gtk-4.0 \
   python3-googleapi python3-google-auth python3-google-auth-oauthlib \
   python3-google-auth-httplib2 python3-icalendar python3-dateutil
 ```
 
 Or `./install.sh`.
+
+## License
+
+GNU General Public License v3.0. See [LICENSE](LICENSE).

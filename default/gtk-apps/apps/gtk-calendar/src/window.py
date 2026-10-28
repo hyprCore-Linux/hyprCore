@@ -34,9 +34,9 @@ def _ensure_gtk_theme_on_path() -> None:
         p = p.parent
     cands.extend(
         (
-            Path("/usr/local/lib/hyprcore/gtk-apps/gtk-theme/python"),
-            Path("/usr/local/lib/hyprcore/gtk-apps/python"),
-            Path("/usr/share/hyprcore/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/python"),
+            Path("/usr/share/neuronix/gtk-theme/python"),
         )
     )
     for d in cands:
@@ -98,7 +98,7 @@ class CalendarWindow(Gtk.ApplicationWindow):
             header,
             about_name="GTK Calendar",
             about_comments=(
-                "Month calendar for the hyprCore GTK-Apps suite. "
+                "Month calendar for the hyprCore Linux GTK apps. "
                 "Sign in to Google Calendar or add .ics files and webcal URLs."
             ),
         )

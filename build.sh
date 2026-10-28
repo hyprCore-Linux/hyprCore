@@ -390,6 +390,10 @@ main() {
 
 	clean_build_root "$build_root" "$full_clean"
 
+	# The wipe removes everything except the apt cache, including generated/.
+	# setup.sh reads those package lists, so write them again after the wipe.
+	regen_package_lists
+
 	_info "Running setup.sh …"
 	( cd "$ISO_DIR" && HYPRCORE_BUILD_ROOT="$build_root" ./setup.sh )
 	_ok "setup.sh finished."

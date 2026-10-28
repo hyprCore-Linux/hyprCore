@@ -736,7 +736,7 @@ def main():
     
     try:
         # Create GTK application
-        app = Gtk.Application(application_id="org.hyprcore.GtkEmoji")
+        app = Gtk.Application(application_id="org.neuronix.GtkEmoji")
         
         def on_activate(app):
             # Create and show the picker window

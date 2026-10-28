@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""gtk-configs — GTK4 editor for hyprCore ~/configs (or --root)."""
+"""gtk-configs — GTK4 editor for hyprCore Linux ~/configs (or --root)."""
 
 from __future__ import annotations
 
@@ -29,9 +29,9 @@ def _ensure_gtk_theme_on_path() -> None:
         p = p.parent
     cands.extend(
         (
-            Path("/usr/local/lib/hyprcore/gtk-apps/python"),
-            Path("/usr/local/lib/hyprcore/gtk-apps/gtk-theme/python"),
-            Path("/usr/share/hyprcore/gtk-theme/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/python"),
+            Path("/usr/local/lib/neuronix/gtk-apps/gtk-theme/python"),
+            Path("/usr/share/neuronix/gtk-theme/python"),
         )
     )
     for cand in cands:
@@ -49,7 +49,7 @@ from lib.root import add_root_arg, resolve_root  # noqa: E402
 from lib.store import ConfigStore  # noqa: E402
 from ui.window import ConfigsWindow  # noqa: E402
 
-APP_ID = "org.hyprcore.GtkConfigs"
+APP_ID = "org.neuronix.GtkConfigs"
 
 
 class ConfigsApp(Gtk.Application):
@@ -64,7 +64,7 @@ class ConfigsApp(Gtk.Application):
             dialog.set_message("Configs root not found")
             dialog.set_detail(
                 f"{self.root}\n\nCreate ~/configs or pass --root PATH "
-                "(e.g. hyprCore/Build/default/configs)."
+                "(e.g. ~/configs)."
             )
             dialog.set_modal(True)
             dialog.set_buttons(["OK"])
@@ -76,7 +76,7 @@ class ConfigsApp(Gtk.Application):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="hyprCore configs editor (GTK4)")
+    parser = argparse.ArgumentParser(description="hyprCore Linux configs editor (GTK4)")
     add_root_arg(parser)
     args, gtk_args = parser.parse_known_args(argv)
     root = resolve_root(args.root)
