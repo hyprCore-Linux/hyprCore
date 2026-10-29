@@ -1,0 +1,103 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 42,
+  "margin-top": 12,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 0,
+  "modules-left": [
+    "image#menu",
+    "hyprland/window"
+  ],
+  "modules-right": [
+    "clock",
+    "image#volume",
+    "image#memory",
+    "battery",
+    "network",
+    "image#cpu",
+    "tray",
+    "custom/settings",
+    "custom/power"
+  ],
+  "image#menu": {
+    "path": "/usr/share/pixmaps/hyprcore-console.png",
+    "size": 28,
+    "tooltip": "Applications",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click fuzzel"
+  },
+  "custom/settings": {
+    "format": "\uf013",
+    "tooltip": "Settings",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click settings"
+  },
+  "custom/power": {
+    "format": "\uf011",
+    "tooltip": "Power",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click power"
+  },
+  "hyprland/window": {
+    "format": "{}",
+    "max-length": 48,
+    "separate-outputs": true
+  },
+  "image#volume": {
+    "exec": "$HOME/.config/waybar/scripts/stat-ring.py volume",
+    "size": 28,
+    "interval": 1,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click volume",
+    "on-scroll-up": "hyprcore-volume +5",
+    "on-scroll-down": "hyprcore-volume -5",
+    "on-click-middle": "hyprcore-volume mute-toggle"
+  },
+  "network": {
+    "format-wifi": "\uf1eb",
+    "format-ethernet": "\uf1e6",
+    "format-disconnected": "\uf071",
+    "tooltip-format-wifi": "{essid} {signalStrength}%",
+    "tooltip-format-ethernet": "{ifname}",
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click network"
+  },
+  "image#cpu": {
+    "exec": "$HOME/.config/waybar/scripts/stat-ring.py cpu",
+    "size": 28,
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click cpu",
+    "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click btop"
+  },
+  "image#memory": {
+    "exec": "$HOME/.config/waybar/scripts/stat-ring.py memory",
+    "size": 28,
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click memory",
+    "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click btop"
+  },
+  "battery": {
+    "format": "{capacity}%",
+    "format-charging": "{capacity}% \uf0e7",
+    "format-plugged": "{capacity}%",
+    "format-icons": [
+      "\uf244",
+      "\uf243",
+      "\uf242",
+      "\uf241",
+      "\uf240"
+    ],
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click battery"
+  },
+  "clock": {
+    "interval": 30,
+    "format": "{:%a %b %d  %I:%M %p}",
+    "tooltip": false,
+    "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click datetime",
+    "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-datetime"
+  },
+  "tray": {
+    "spacing": 6,
+    "icon-size": 16
+  }
+}

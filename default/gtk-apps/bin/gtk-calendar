@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Resolve through /usr/local/bin → ../lib/hyprcore/gtk-apps symlink
 SCRIPT="$(readlink -f "$0")"
 LIB="$(cd "$(dirname "$SCRIPT")" && pwd)"
 APP="$LIB/apps/gtk-calendar"
 THEME=""
 for cand in "$LIB/gtk-theme/python" /usr/share/hyprcore/gtk-theme/python; do
-  [[ -f "$cand/gtk_theme.py" ]] && THEME="$cand" && break
+  [[ -d "$cand" ]] && THEME="$cand" && break
 done
 export PYTHONPATH="${THEME:+$THEME:}$APP${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONUNBUFFERED=1

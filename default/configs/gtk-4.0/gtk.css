@@ -34,14 +34,14 @@ window.messagedialog .response-area {
 @define-color theme_fg_color #ebdbb2;
 @define-color theme_base_color #282828;
 @define-color theme_text_color #ebdbb2;
-@define-color theme_selected_bg_color #ffbe6f;
-@define-color theme_selected_fg_color #1d2021;
-@define-color theme_unfocused_selected_bg_color #ffbe6f;
-@define-color theme_unfocused_selected_fg_color #1d2021;
-@define-color accent_bg_color #ffbe6f;
-@define-color accent_fg_color #1d2021;
-@define-color accent_color #ffbe6f;
-@define-color blue_3 #ffbe6f;
+@define-color theme_selected_bg_color #d32f2f;
+@define-color theme_selected_fg_color #fbf1c7;
+@define-color theme_unfocused_selected_bg_color #d32f2f;
+@define-color theme_unfocused_selected_fg_color #fbf1c7;
+@define-color accent_bg_color #d32f2f;
+@define-color accent_fg_color #fbf1c7;
+@define-color accent_color #d32f2f;
+@define-color blue_3 #d32f2f;
 @define-color window_bg_color #282828;
 @define-color window_fg_color #ebdbb2;
 @define-color view_bg_color #282828;
@@ -82,9 +82,9 @@ window.messagedialog .response-area {
   --card-fg-color: #ebdbb2;
   --dialog-bg-color: #282828;
   --dialog-fg-color: #ebdbb2;
-  --accent-bg-color: #ffbe6f;
-  --accent-fg-color: #1d2021;
-  --accent-color: #ffbe6f;
+  --accent-bg-color: #d32f2f;
+  --accent-fg-color: #fbf1c7;
+  --accent-color: #d32f2f;
 }
 
 window.messagedialog, window.dialog, window.filechooser,
@@ -102,8 +102,8 @@ window.messagedialog .titlebar, window.dialog .titlebar, window.filechooser .tit
 window.messagedialog button.suggested-action,
 window.dialog button.suggested-action,
 window.filechooser button.suggested-action {
-  background-color: #ffbe6f;
-  color: #1d2021;
+  background-color: #d32f2f;
+  color: #fbf1c7;
 }
 *:selected, *:selected *,
 row:selected, row:selected *,
@@ -111,6 +111,6 @@ listview > row:selected, listview > row:selected *,
 gridview > child:selected, gridview > child:selected *,
 columnview row:selected, columnview row:selected *,
 .view:selected, .view:selected * {
-  color: #1d2021;
+  color: #fbf1c7;
 }
 /* END gtk-theme:shell-chrome */

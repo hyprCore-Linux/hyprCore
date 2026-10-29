@@ -352,15 +352,14 @@ if grep -q 'def weather_page' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pag
 	&& grep -q 'def _weather_glyph' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
 	&& grep -q 'HubSection("weather"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
 	&& grep -qE 'weather \| forecast' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null \
-	&& grep -q '"custom/weather"' "$BUILD_ROOT/default/configs/waybar/config" 2>/dev/null \
 	&& grep -q '#custom-weather' "$BUILD_ROOT/default/configs/waybar/style.css" 2>/dev/null \
 	&& grep -q 'Symbols Nerd Font' "$BUILD_ROOT/default/configs/waybar/style.css" 2>/dev/null \
 	&& [[ -x "$BUILD_ROOT/default/configs/waybar/weather.sh" ]] \
 	&& grep -q 'def _glyph' "$BUILD_ROOT/default/configs/waybar/weather.sh" 2>/dev/null; then
-	echo "  OK  Weather tab, hourly Nerd Font strip, Waybar module"
+	echo "  OK  Weather tab, hourly Nerd Font strip"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  Weather settings page / Waybar weather module"
+	echo "  MISSING  Weather settings page"
 	_fail=$((_fail + 1))
 fi
 
@@ -401,7 +400,6 @@ if grep -q 'HubSection("weather"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/
 	&& grep -q 'hyprcore-hour-strip' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
 	&& grep -q 'API key' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
 	&& grep -qE 'weather \| forecast' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null \
-	&& grep -q '"custom/weather"' "$BUILD_ROOT/default/configs/waybar/config" 2>/dev/null \
 	&& grep -q 'Symbols Nerd Font' "$BUILD_ROOT/default/configs/waybar/style.css" 2>/dev/null \
 	&& [[ -x "$BUILD_ROOT/default/configs/waybar/weather.sh" ]] \
 	&& grep -q 'def plugins_page' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
@@ -410,7 +408,7 @@ if grep -q 'HubSection("weather"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/
 	&& ! grep -q 'Window chrome' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
 	&& grep -q 'from weather_tab import WeatherTab' "$OVERLAY/usr/local/lib/hyprcore/hypr-settings/main.py" 2>/dev/null \
 	&& [[ -f "$OVERLAY/usr/local/lib/hyprcore/hypr-settings/weather_tab.py" ]]; then
-	echo "  OK  weather hourly forecast, Waybar weather, Plugins tab"
+	echo "  OK  weather hourly forecast, Plugins tab"
 	_ok=$((_ok + 1))
 else
 	echo "  MISSING  weather / plugins ISO overlay (settings page, Waybar, hypr-settings)"

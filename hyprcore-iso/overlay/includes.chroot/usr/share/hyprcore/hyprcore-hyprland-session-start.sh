@@ -121,7 +121,22 @@ if command -v systemctl >/dev/null 2>&1; then
 	) &
 fi
 
-waybar &
+# Live bar: no workspace switcher, layout modes, weather, or gtk-sync. The installed
+# user's ~/.config/waybar/config (from /etc/skel) keeps the full bar.
+# Copy onto the live config so a later plain `waybar` restart stays simple.
+if grep -qw boot=live /proc/cmdline 2>/dev/null \
+	&& [ -f /usr/share/hyprcore/waybar-live.json ]; then
+	_waybar_dir="${XDG_CONFIG_HOME:-$HOME/.config}/waybar"
+	if [ -d "$_waybar_dir" ] && [ -w "$_waybar_dir" ]; then
+		cp -f /usr/share/hyprcore/waybar-live.json "$_waybar_dir/config"
+		waybar &
+	else
+		waybar -c /usr/share/hyprcore/waybar-live.json \
+			-s "${HOME}/.config/waybar/style.css" &
+	fi
+else
+	waybar &
+fi
 mako &
 # Monitor hot-plug profiles (optional; no-op when kanshi is not installed)
 if command -v kanshi >/dev/null 2>&1; then

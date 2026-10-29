@@ -16,19 +16,19 @@ dialog list {
 @define-color theme_fg_color #ebdbb2;
 @define-color theme_base_color #282828;
 @define-color theme_text_color #ebdbb2;
-@define-color theme_selected_bg_color #ffbe6f;
-@define-color theme_selected_fg_color #1d2021;
-@define-color theme_unfocused_selected_bg_color #ffbe6f;
-@define-color theme_unfocused_selected_fg_color #1d2021;
+@define-color theme_selected_bg_color #d32f2f;
+@define-color theme_selected_fg_color #fbf1c7;
+@define-color theme_unfocused_selected_bg_color #d32f2f;
+@define-color theme_unfocused_selected_fg_color #fbf1c7;
 @define-color insensitive_bg_color #3c3a36;
 @define-color insensitive_fg_color #a79c82;
 @define-color insensitive_base_color #3c3a36;
 @define-color borders #4b4841;
 @define-color unfocused_borders #4b4841;
-@define-color accent_bg_color #ffbe6f;
-@define-color accent_fg_color #1d2021;
-@define-color accent_color #ffbe6f;
-@define-color blue_3 #ffbe6f;
+@define-color accent_bg_color #d32f2f;
+@define-color accent_fg_color #fbf1c7;
+@define-color accent_color #d32f2f;
+@define-color blue_3 #d32f2f;
 
 /* Exclude DING desktop window — opaque chrome would cover the wallpaper */
 window:not(.desktopwindow),
@@ -63,17 +63,17 @@ button:hover {
 }
 button:checked, button.suggested-action, button.suggested-action:hover,
 button.suggested-action:active {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
   background-image: none;
-  color: #1d2021;
-  border-color: #ffbe6f;
+  color: #fbf1c7;
+  border-color: #d32f2f;
 }
-button.suggested-action label, button:checked label { color: #1d2021; }
+button.suggested-action label, button:checked label { color: #fbf1c7; }
 *:selected, treeview:selected, treeview.view:selected,
 treeview.view:selected:focus, list row:selected, listview row:selected,
 .view:selected, .content-view:selected {
-  background-color: #ffbe6f;
-  color: #1d2021;
+  background-color: #d32f2f;
+  color: #fbf1c7;
 }
 placessidebar, placessidebar list, placessidebar row,
 .sidebar, stacksidebar {
@@ -83,8 +83,8 @@ placessidebar, placessidebar list, placessidebar row,
   border-color: #4b4841;
 }
 placessidebar row:selected, .sidebar row:selected {
-  background-color: #ffbe6f;
-  color: #1d2021;
+  background-color: #d32f2f;
+  color: #fbf1c7;
 }
 entry, searchbar entry, spinbutton, spinbutton entry {
   background-color: #282828;
@@ -128,7 +128,7 @@ notebook > header > tabs > tab:hover {
 notebook > header > tabs > tab:checked {
   background-color: #282828;
   color: #ebdbb2;
-  box-shadow: inset 0 -2px #ffbe6f;
+  box-shadow: inset 0 -2px #d32f2f;
 }
 notebook > stack {
   background-color: #282828;
@@ -159,7 +159,7 @@ placessidebar row:selected, placessidebar row:selected *,
 .sidebar row:selected, .sidebar row:selected *,
 menuitem:hover, menuitem:hover *,
 modelbutton:hover, modelbutton:hover * {
-  color: #1d2021;
+  color: #fbf1c7;
 }
 separator { background-color: #4b4841; }
 scale trough {
@@ -167,13 +167,13 @@ scale trough {
   background-image: none;
 }
 scale highlight {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
   background-image: none;
 }
 scale slider {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
   background-image: none;
-  border-color: #ffbe6f;
+  border-color: #d32f2f;
 }
 switch {
   background-color: #4b4841;
@@ -181,8 +181,8 @@ switch {
   border-color: #4b4841;
 }
 switch:checked {
-  background-color: #ffbe6f;
-  border-color: #ffbe6f;
+  background-color: #d32f2f;
+  border-color: #d32f2f;
 }
 switch slider {
   background-color: #ebdbb2;
@@ -191,18 +191,18 @@ switch slider {
 check, radio {
   background-color: #3f3d39;
   border-color: #4b4841;
-  color: #1d2021;
+  color: #fbf1c7;
 }
 check:checked, radio:checked {
-  background-color: #ffbe6f;
-  border-color: #ffbe6f;
-  color: #1d2021;
+  background-color: #d32f2f;
+  border-color: #d32f2f;
+  color: #fbf1c7;
 }
 progressbar trough {
   background-color: #4b4841;
 }
 progressbar progress {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
 }
 combobox button.combo, combobox menu {
   background-color: #3f3d39;
@@ -216,8 +216,8 @@ menubar, menu, popover, popover.background {
   border-color: #4b4841;
 }
 menuitem:hover, modelbutton:hover {
-  background-color: #ffbe6f;
-  color: #1d2021;
+  background-color: #d32f2f;
+  color: #fbf1c7;
 }
 scrollbar, scrollbar contents, scrollbar trough {
   background-color: #282828;
@@ -235,46 +235,46 @@ toolbar, .primary-toolbar, .inline-toolbar {
 /* Adwaita hard-codes blues (#1b6acb / #15539e). Match those selectors. */
 switch:checked, switch:checked:hover, switch:checked:active,
 switch:backdrop:checked, switch:checked:not(:disabled) {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
   background-image: none;
-  border-color: #ffbe6f;
-  color: #1d2021;
+  border-color: #d32f2f;
+  color: #fbf1c7;
 }
 switch:checked > slider, switch:backdrop:checked > slider {
-  border-color: #ffbe6f;
+  border-color: #d32f2f;
 }
 notebook > header.top > tabs > tab:checked {
-  box-shadow: inset 0 -4px #ffbe6f;
+  box-shadow: inset 0 -4px #d32f2f;
 }
 notebook > header.bottom > tabs > tab:checked {
-  box-shadow: inset 0 4px #ffbe6f;
+  box-shadow: inset 0 4px #d32f2f;
 }
 notebook > header.left > tabs > tab:checked {
-  box-shadow: inset -4px 0 #ffbe6f;
+  box-shadow: inset -4px 0 #d32f2f;
 }
 notebook > header.right > tabs > tab:checked {
-  box-shadow: inset 4px 0 #ffbe6f;
+  box-shadow: inset 4px 0 #d32f2f;
 }
 progressbar progress, scale highlight,
 progressbar progress:backdrop, scale highlight:backdrop {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
   background-image: none;
-  border-color: #ffbe6f;
+  border-color: #d32f2f;
 }
 button.suggested-action, button.suggested-action:hover,
 button.suggested-action:active, button.suggested-action:backdrop {
-  background-color: #ffbe6f;
+  background-color: #d32f2f;
   background-image: none;
-  color: #1d2021;
-  border-color: #ffbe6f;
+  color: #fbf1c7;
+  border-color: #d32f2f;
 }
 *:link, *:visited, .link, button.link {
-  color: #ffbe6f;
+  color: #d32f2f;
 }
 *:selected:focus, *:selected:focus-within,
 label > selection:focus-within, entry > text > selection:focus-within {
-  background-color: #ffbe6f;
-  color: #1d2021;
+  background-color: #d32f2f;
+  color: #fbf1c7;
 }
 switch:focus, switch:focus:checked, scale:focus,
 button:focus, check:focus, radio:focus {
