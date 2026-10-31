@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 _PROFILES_PATH = Path(__file__).resolve().parent.parent / "profiles.json"
-_DEFAULT_ID = "neuronix"
+_DEFAULT_ID = "hyprcore"
 
 
 def _profiles_json_path() -> Path:
@@ -29,9 +29,9 @@ def _profiles_json_path() -> Path:
     cands = (
         here.parent / "profiles.json",
         here / "profiles.json",
-        Path("/usr/local/lib/neuronix/gtk-apps/gtk-theme/profiles.json"),
-        Path("/usr/share/neuronix/gtk-theme/profiles.json"),
-        Path("/usr/local/lib/neuronix/gtk-apps/profiles.json"),
+        Path("/usr/local/lib/hyprcore/gtk-apps/gtk-theme/profiles.json"),
+        Path("/usr/share/hyprcore/gtk-theme/profiles.json"),
+        Path("/usr/local/lib/hyprcore/gtk-apps/profiles.json"),
     )
     for path in cands:
         try:
@@ -61,7 +61,7 @@ ABOUT_ACTION = "about"
 ABOUT_MENU_ACTION = "win.about"
 SUITE_AUTHOR = "Created by Kevin Hinds"
 # Full GTK3/GTK4 theme under ~/.themes (THEME priority). Rewritten on profile change.
-SHELL_GTK_THEME = "neuronix"
+SHELL_GTK_THEME = "hyprcore"
 
 
 def _papirus_icon_theme(is_dark: bool) -> str:
@@ -711,7 +711,7 @@ def sourceview_scheme_candidates(profile_id: str) -> list[str]:
         "night-owl": ["night-owl", "Adwaita-dark", "classic"],
         "palenight": ["palenight", "Adwaita-dark", "classic"],
         "material-darker": ["material-darker", "Adwaita-dark", "classic"],
-        "neuronix": ["material-darker", "Adwaita-dark", "classic"],
+        "hyprcore": ["material-darker", "Adwaita-dark", "classic"],
         "cobalt2": ["cobalt", "Adwaita-dark", "classic"],
         "zenburn": ["zenburn", "oblivion", "Adwaita-dark", "classic"],
         "tomorrow-night": ["tomorrow-night", "Adwaita-dark", "classic"],
@@ -1285,11 +1285,11 @@ def _hyprctl_hyprbarsgradient(args: str) -> None:
 
 def _theme_session_safe() -> bool:
     """True during Hyprland session bring-up — avoid reload / process thrash."""
-    return bool(os.environ.get("NEURONIX_THEME_NO_HYPR_RELOAD"))
+    return bool(os.environ.get("HYPRCORE_THEME_NO_HYPR_RELOAD"))
 
 
 def _hyprctl_reload() -> None:
-    # Session start sets NEURONIX_THEME_NO_HYPR_RELOAD so we never `hyprctl reload`
+    # Session start sets HYPRCORE_THEME_NO_HYPR_RELOAD so we never `hyprctl reload`
     # while plugins/portals are still coming up (that freezes Hyprland on re-login).
     if _theme_session_safe():
         return
@@ -1332,7 +1332,7 @@ def sync_shell_chrome(profile: Optional[Profile] = None) -> bool:
     _sync_gtk_term_colors(profile)
     _sync_gtk_user_css(profile)
     # On profile change: drop cached GTK dialogs / portal. During session start
-    # (NEURONIX_THEME_NO_HYPR_RELOAD) skip — portal/waybar bring-up already races.
+    # (HYPRCORE_THEME_NO_HYPR_RELOAD) skip — portal/waybar bring-up already races.
     if not _theme_session_safe():
         _restart_system_dialogs()
     return True
@@ -1728,7 +1728,7 @@ def _sync_gtk_user_css(profile: Profile) -> None:
     # GTK3 gets full dialog chrome (zenity). GTK4 only defines colors + dialog
     # selectors — generic headerbar/window rules at USER priority override suite
     # chrome and stick until process restart (purple leftovers on light themes).
-    # Full GTK4 chrome for pavucontrol etc. lives in ~/.themes/neuronix (THEME
+    # Full GTK4 chrome for pavucontrol etc. lives in ~/.themes/hyprcore (THEME
     # priority) via _sync_shell_gtk_theme — not here.
     gtk3 = _system_dialog_css(profile)
     gtk4 = _system_dialog_css_gtk4(profile)
@@ -2086,7 +2086,7 @@ def _sync_hypr_gtk_theme_env(is_dark: bool = True) -> None:
 
 
 def _sync_shell_gtk_theme(profile: Profile) -> None:
-    """Write ~/.themes/neuronix (+ XDG themes) so GTK4 apps follow the profile."""
+    """Write ~/.themes/hyprcore (+ XDG themes) so GTK4 apps follow the profile."""
     gtk3 = _shell_theme_gtk3_css(profile)
     gtk4 = _shell_theme_gtk4_css(profile)
     index = _shell_theme_index(profile)

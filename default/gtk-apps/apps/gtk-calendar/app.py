@@ -18,7 +18,7 @@ from gi.repository import Gio, Gtk
 from src.ics import normalize_ics_url
 from src.window import CalendarWindow
 
-APP_ID = "org.neuronix.GtkCalendar"
+APP_ID = "org.hyprcore.GtkCalendar"
 
 
 class CalendarApp(Gtk.Application):

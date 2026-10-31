@@ -37,11 +37,6 @@ if grep -qw boot=live /proc/cmdline 2>/dev/null; then
 # The workstation layout stays in /etc/skel for the installed system.
 monitor=,preferred,auto,1
 EOF
-		if [ -f "$_hypr_conf/hyprland.conf" ] && [ -w "$_hypr_conf/hyprland.conf" ]; then
-			sed -i \
-				's|/usr/share/neuronix/neuronix-hyprland-session-start.sh|/usr/share/hyprcore/hyprcore-hyprland-session-start.sh|' \
-				"$_hypr_conf/hyprland.conf"
-		fi
 	fi
 fi
 

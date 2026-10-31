@@ -29,9 +29,9 @@ def _ensure_gtk_theme_on_path() -> None:
         p = p.parent
     cands.extend(
         (
-            Path("/usr/local/lib/neuronix/gtk-apps/python"),
-            Path("/usr/local/lib/neuronix/gtk-apps/gtk-theme/python"),
-            Path("/usr/share/neuronix/gtk-theme/python"),
+            Path("/usr/local/lib/hyprcore/gtk-apps/python"),
+            Path("/usr/local/lib/hyprcore/gtk-apps/gtk-theme/python"),
+            Path("/usr/share/hyprcore/gtk-theme/python"),
         )
     )
     for cand in cands:
@@ -49,7 +49,7 @@ from lib.root import add_root_arg, resolve_root  # noqa: E402
 from lib.store import ConfigStore  # noqa: E402
 from ui.window import ConfigsWindow  # noqa: E402
 
-APP_ID = "org.neuronix.GtkConfigs"
+APP_ID = "org.hyprcore.GtkConfigs"
 
 
 class ConfigsApp(Gtk.Application):
