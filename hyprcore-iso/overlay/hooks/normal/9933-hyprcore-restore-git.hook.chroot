@@ -14,4 +14,4 @@ _unpack_git() {
 }
 
 _unpack_git /usr/share/hyprcore/skel-configs.git.tar /etc/skel/configs
-_unpack_git /usr/share/hyprcore/skel-devtools.git.tar /etc/skel/DevTools
+# DevTools now live in configs/devtools and ride in skel-configs.git.tar.

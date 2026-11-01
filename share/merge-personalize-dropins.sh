@@ -14,7 +14,8 @@
 #   gtk-apps/            → overlay onto usr/local/lib/hyprcore/gtk-apps (+ bin + desktops)
 #   install/*.sh         → usr/share/hyprcore/personalize-install (default then personalize)
 #   hooks/*.sh           → usr/share/hyprcore/user-hooks (default then personalize)
-#   devtools/            → etc/skel/DevTools (desktop overlay; ~/DevTools on install)
+#   configs/devtools/    → etc/skel/configs/devtools with the rest of configs (`dt`)
+#   devtools/            → leftover standalone tree only (symlink to configs/devtools is skipped)
 #   grub.d/hyprcore-product.cfg → etc/default/grub.d/ (clobbers default/grub.d/)
 set -euo pipefail
 
@@ -1109,22 +1110,31 @@ merge_install_scripts() {
 	fi
 }
 
-# Desktop helper scripts → /etc/skel/DevTools so Calamares copies them to ~/DevTools.
-# Source is personalize/devtools when that tree contains navigate.sh, otherwise
-# $HOME/DevTools. Server overlays skip this. live-build drops .git, so the git
-# dir is also packed for 9933-hyprcore-restore-git.hook.chroot.
+# Desktop helper scripts live in configs/devtools and ride with merge_configs
+# to etc/skel/configs/devtools. Only copy a leftover standalone personalize/devtools
+# (or ~/DevTools) when that tree is not already configs/devtools.
 merge_devtools() {
 	_is_server_overlay && return 0
-	local src="" dest git_tar
+	local src="" dest git_tar configs_dt
+	configs_dt=""
+	if [[ -f "${PERSONALIZE:-}/configs/devtools/navigate.sh" ]]; then
+		configs_dt="$(readlink -f "${PERSONALIZE}/configs/devtools")"
+		_info "devtools live in configs/devtools (no separate /etc/skel/DevTools)"
+	fi
 	if [[ -f "${PERSONALIZE:-}/devtools/navigate.sh" ]]; then
 		src="$(readlink -f "${PERSONALIZE}/devtools")"
+	elif [[ -f "${HOME:-}/configs/devtools/navigate.sh" ]]; then
+		src="$(readlink -f "${HOME}/configs/devtools")"
 	elif [[ -f "${HOME:-}/DevTools/navigate.sh" ]]; then
 		src="${HOME}/DevTools"
 	else
 		return 0
 	fi
 	[[ -d "$src" ]] || return 0
-	dest="$INCLUDES/etc/skel/DevTools"
+	if [[ -n "$configs_dt" && "$src" == "$configs_dt" ]]; then
+		return 0
+	fi
+	dest="$INCLUDES/etc/skel/configs/devtools"
 	rm -rf "$dest"
 	mkdir -p "$dest"
 	tar -C "$src" \
@@ -1133,13 +1143,7 @@ merge_devtools() {
 		-cf - . | tar -C "$dest" -xf -
 	find "$dest" -type d -exec chmod a+rx {} +
 	find "$dest" -type f \( -name '*.sh' -o -name '*.py' \) -exec chmod a+rX {} +
-	_info "staged DevTools → etc/skel/DevTools (from $src)"
-	if [[ -d "$src/.git" ]]; then
-		git_tar="$INCLUDES/usr/share/hyprcore/skel-devtools.git.tar"
-		mkdir -p "$(dirname "$git_tar")"
-		tar -C "$src" -cf "$git_tar" .git
-		_info "  staged DevTools/.git → usr/share/hyprcore/skel-devtools.git.tar"
-	fi
+	_info "staged leftover DevTools → etc/skel/configs/devtools (from $src)"
 }
 
 # First-login user hooks: /usr/share/hyprcore/user-hooks/*.sh
