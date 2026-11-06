@@ -17,6 +17,7 @@ from monitor_profiles import (
     save_profile  as _save_profile,
     delete_profile as _delete_profile,
     write_monitors_lua,
+    write_monitors_conf,
     MONITORS_LUA,
     daemon_pid    as _daemon_pid,
 )
@@ -590,6 +591,7 @@ class DisplaysTab(QWidget):
         if not self._monitors:
             return
         try:
+            write_monitors_conf(self._monitors)
             write_monitors_lua(self._monitors, use_edid=True)
         except OSError as e:
             self._status_lbl.setText(f"Save failed: {e}")
