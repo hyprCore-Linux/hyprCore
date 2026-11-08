@@ -3,7 +3,6 @@
 #
 # Expected siblings of this hyprCore checkout:
 #   ../Packages/gtk-apps
-#   ../Packages/hyprframes
 #   ../KvNix/
 #
 # ISO setup and syn-to-devices resolve the monorepo root from this layout

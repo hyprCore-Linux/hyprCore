@@ -15,6 +15,7 @@ from .gtk_theme import (  # noqa: F401
     default_profile,
     install_about_action,
     install_open_theme_editor_action,
+    install_reveal_menubar,
     integrate_profile_menu,
     launch_theme_editor,
     load_profile,

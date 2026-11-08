@@ -1,0 +1,2 @@
+# Low-priority sid for Hyprland 0.56 companions (hyprpaper / xdph / …).
+deb http://deb.debian.org/debian sid main contrib non-free non-free-firmware

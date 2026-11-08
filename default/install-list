@@ -12,8 +12,7 @@
 #
 # Hook-only (not listed): google-chrome-stable / cursor — Desktop Calamares only.
 # Backports hook 997 + Calamares Desktop: Hyprland stack + ydotool.
-# Hook 998 builds hyprbars / Hyprspace against the ISO Hyprland ABI (apt plugin often lags).
-# Hook 998 prebuilds Hyprspace.so into the ISO (Super → overview on live).
+# Hook 998 builds hyprtabs against the ISO Hyprland ABI.
 # Not on live (personalize only if you want them): audacity, blender, systemsettings.
 
 # --- live ---
@@ -159,14 +158,14 @@ python3-pip # pip for gtk-neuron cursor-sdk (optional repair)
 # Hyprland session as shipped (keybinds + settings panel + hyprpm plugins)
 wf-recorder # Screen recording (Ctrl+Alt+Shift+R in hyprland.conf)
 kanshi # Monitor hot-plug profiles for Wayland compositors
-cmake # Build hyprpm plugins (hyprbars, Hyprspace)
+cmake # Build the hyprtabs plugin
 g++ # C++ compiler for hyprpm plugins
 meson # Build system used by hyprpm plugin builds
 ninja-build # Ninja backend for meson / hyprpm
-patch # Apply hyprCore Hyprspace patches in hook 998
+patch # Apply source patches during the ISO build
 hyprland-dev # Hyprland headers for hyprpm plugins
 libpixman-1-dev # pixman headers required to compile hyprpm plugins
-libpango1.0-dev # pangocairo headers required to compile Hyprspace
+libpango1.0-dev # pangocairo headers for Hyprland plugin builds
 libcairo2-dev # Cairo headers (pangocairo) for hyprpm plugins
 nwg-bar # Session / power quick-action bar (Ctrl+Alt+Delete)
 xsettingsd # Xsettings daemon (Appearance / gtk-theme bridge → ~/.config/xsettingsd/)

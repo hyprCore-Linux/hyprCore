@@ -639,7 +639,7 @@ label.hyprcore-pct {{
 
 window.hyprcore-settings {{
   background-color: transparent;
-  color: #ffffff;
+  color: {fg};
   border-radius: 16px;
 }}
 window.hyprcore-settings label,
@@ -650,33 +650,41 @@ window.hyprcore-settings entry {{
 window.hyprcore-settings box.hyprcore-root.hyprcore-hub {{
   padding: 0;
   border: none;
-  background-color: #1e1e1e;
+  background-color: {bg};
   border-radius: 16px;
 }}
 window.hyprcore-settings box.hyprcore-sidebar {{
+  background-color: {sidebar};
+  background-image: none;
   border-top-left-radius: 16px;
   border-bottom-left-radius: 16px;
 }}
 window.hyprcore-settings box.hyprcore-sidehead {{
+  background-color: {bar0};
+  background-image: {bar_fill};
   border-top-left-radius: 16px;
 }}
 window.hyprcore-settings box.hyprcore-headerbar {{
+  background-color: {bar0};
+  background-image: {bar_fill};
   border-top-right-radius: 16px;
 }}
 window.hyprcore-settings box.hyprcore-content {{
+  background-color: {bg};
+  background-image: none;
   border-bottom-right-radius: 16px;
 }}
 window.hyprcore-settings box.hyprcore-sep {{
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: {hairline};
   min-width: 1px;
 }}
 window.hyprcore-settings box.hyprcore-sidehead {{
   min-height: 47px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid {hairline};
   padding: 0 4px;
 }}
 window.hyprcore-settings label.hyprcore-sidebar-title {{
-  color: #ffffff;
+  color: {fg};
   font-size: 15px;
   font-weight: 700;
 }}
@@ -689,24 +697,24 @@ window.hyprcore-settings button.hyprcore-iconbtn {{
   min-width: 34px;
   min-height: 34px;
   padding: 0;
-  color: #ffffff;
+  color: {fg};
 }}
 window.hyprcore-settings button.hyprcore-iconbtn:hover {{
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: {hairline};
 }}
 window.hyprcore-settings entry.hyprcore-search {{
   background-color: transparent;
   background-image: none;
   border: none;
   box-shadow: none;
-  color: #ffffff;
+  color: {fg};
   font-size: 15px;
   font-weight: 500;
   min-height: 34px;
   padding: 0 4px;
 }}
 window.hyprcore-settings label.hyprcore-nav-group {{
-  color: #a8a8a8;
+  color: {muted};
   font-size: 11px;
   font-weight: 700;
   margin-top: 14px;
@@ -724,30 +732,33 @@ window.hyprcore-settings button.hyprcore-nav {{
   min-height: 0;
 }}
 window.hyprcore-settings button.hyprcore-nav:hover {{
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: {nav_hover};
 }}
 window.hyprcore-settings button.hyprcore-nav.selected,
 window.hyprcore-settings button.hyprcore-nav.selected:hover {{
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: {nav_selected};
+  background-image: none;
 }}
 window.hyprcore-settings button.hyprcore-nav label.hyprcore-row-title {{
   font-size: 14px;
   font-weight: 500;
-  color: #ffffff;
+  color: {fg};
 }}
 window.hyprcore-settings button.hyprcore-nav.selected label.hyprcore-row-title {{
   font-weight: 700;
+  color: {on_accent};
 }}
 window.hyprcore-settings box.hyprcore-headerbar {{
   min-height: 47px;
   padding: 0 12px 0 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background-color: transparent;
+  border-bottom: 1px solid {border};
+  background-color: {bar0};
+  background-image: {bar_fill};
 }}
 window.hyprcore-settings box.hyprcore-headerbar label.hyprcore-title {{
   font-size: 15px;
   font-weight: 700;
-  color: #ffffff;
+  color: {fg};
 }}
 window.hyprcore-settings button.hyprcore-xclose {{
   background-color: transparent;
@@ -758,13 +769,13 @@ window.hyprcore-settings button.hyprcore-xclose {{
   min-width: 34px;
   min-height: 34px;
   font-size: 18px;
-  color: #ffffff;
+  color: {fg};
 }}
 window.hyprcore-settings button.hyprcore-xclose:hover {{
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: {hairline};
 }}
 window.hyprcore-settings label.hyprcore-heading {{
-  color: #b0b0b0;
+  color: {muted};
   font-size: 11px;
   font-weight: 700;
   margin-top: 16px;
@@ -773,7 +784,9 @@ window.hyprcore-settings label.hyprcore-heading {{
   margin-right: 18px;
 }}
 window.hyprcore-settings box.hyprcore-card {{
-  background-color: #2d2d2d;
+  background-color: {card};
+  background-image: none;
+  border: 1px solid {border};
   border-radius: 12px;
   padding: 8px 16px;
   margin-top: 6px;
@@ -783,7 +796,7 @@ window.hyprcore-settings box.hyprcore-card {{
 }}
 window.hyprcore-settings box.hyprcore-card label.hyprcore-subtitle,
 window.hyprcore-settings box.hyprcore-card label.hyprcore-row-desc {{
-  color: #b0b0b0;
+  color: {muted};
   font-size: 12px;
 }}
 window.hyprcore-settings scrolledwindow.hyprcore-list-frame,
@@ -800,26 +813,37 @@ window.hyprcore-settings row.hyprcore-list-row {{
 }}
 window.hyprcore-settings row.hyprcore-list-row:hover,
 window.hyprcore-settings row.hyprcore-list-row:selected {{
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: {hairline};
 }}
-window.hyprcore-settings button.hyprcore-secondary,
-window.hyprcore-settings button.hyprcore-primary {{
-  background-color: #3a3a3a;
+window.hyprcore-settings button.hyprcore-secondary {{
+  background-color: {control};
   background-image: none;
-  color: #ffffff;
+  color: {fg};
+  border: 1px solid {border};
+  border-radius: 9px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}}
+window.hyprcore-settings button.hyprcore-secondary:hover {{
+  background-color: {control_hover};
+}}
+window.hyprcore-settings button.hyprcore-primary {{
+  background-color: {accent};
+  background-image: none;
+  color: {on_accent};
   border: none;
   border-radius: 9px;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
 }}
-window.hyprcore-settings button.hyprcore-secondary:hover,
 window.hyprcore-settings button.hyprcore-primary:hover {{
-  background-color: #4a4a4a;
+  background-color: {btn_hover};
 }}
 window.hyprcore-settings entry {{
-  background-color: #3a3a3a;
-  color: #ffffff;
+  background-color: {control};
+  color: {fg};
   border: none;
   border-radius: 8px;
   padding: 6px 10px;
@@ -833,7 +857,7 @@ window.hyprcore-settings entry.hyprcore-search {{
   padding: 0 4px;
 }}
 window.hyprcore-settings switch {{
-  background-color: #5e5e5e;
+  background-color: {switch_off};
   background-image: none;
   border: none;
   border-radius: 999px;
@@ -883,11 +907,11 @@ window.hyprcore-settings box.hyprcore-pref-row {{
 }}
 window.hyprcore-settings combobox button,
 window.hyprcore-settings combobox button.combo {{
-  background-color: #3a3a3a;
+  background-color: {control};
   border: none;
   border-radius: 8px;
   padding: 4px 10px;
-  color: #ffffff;
+  color: {fg};
 }}
 """
 
@@ -1165,6 +1189,7 @@ def _profile_catalog_paths() -> list[str]:
     home = os.path.expanduser("~")
     return [
         os.path.join(home, ".config/gtk-apps/custom-profiles.json"),
+        os.path.join(home, ".local/lib/hyprcore/gtk-apps/gtk-theme/profiles.json"),
         os.path.join(home, ".local/share/hyprcore/gtk-theme/profiles.json"),
         "/usr/local/lib/hyprcore/gtk-apps/gtk-theme/profiles.json",
         "/usr/share/hyprcore/gtk-theme/profiles.json",
@@ -1243,9 +1268,27 @@ def _theme_chrome() -> dict[str, str]:
         accent = _mix_hex(bg, fg, 0.45)
     if _hex_rgb(border) is None:
         border = _mix_hex(bg, fg, 0.22)
-    selection = _mix_hex(bg, fg, 0.16)
+    chrome_raw = profile.get("chrome") if isinstance(profile.get("chrome"), dict) else {}
+
+    def _pair(key: str, fallback_a: str, fallback_b: str) -> tuple[str, str]:
+        raw = chrome_raw.get(key)
+        if isinstance(raw, list) and raw:
+            stop_a = str(raw[0])
+            stop_b = str(raw[1]) if len(raw) > 1 else stop_a
+            if _hex_rgb(stop_a) and _hex_rgb(stop_b):
+                return stop_a, stop_b
+        return fallback_a, fallback_b
+
+    bar0, bar1 = _pair("bar", _mix_hex(bg, fg, 0.12), _mix_hex(bg, fg, 0.28))
+    quiet0, _quiet1 = _pair("bar_inactive", _mix_hex(bg, fg, 0.06), bar0)
+    sidebar = str(palette[0]) if palette and isinstance(palette[0], str) and _hex_rgb(str(palette[0])) else _mix_hex(bg, "#000000", 0.35)
+    if str(chrome_raw.get("gradient") or "rtl") == "ltr":
+        bar_fill = f"linear-gradient(to right, {bar0}, {bar1})"
+    else:
+        bar_fill = f"linear-gradient(to left, {bar0}, {bar1})"
+    selection = _mix_hex(bg, accent, 0.34)
     hint = _mix_hex(fg, bg, 0.38)
-    well_border = _mix_hex(border, fg, 0.28)
+    well_border = border
     on_accent = "#1d2021" if _relative_luminance(accent) >= 0.45 else fg
     return {
         "bg": bg,
@@ -1255,13 +1298,23 @@ def _theme_chrome() -> dict[str, str]:
         "selection": selection,
         "tile": bg,
         "btn_border": border,
-        "btn_hover": selection,
+        "btn_hover": _mix_hex(bar0, accent, 0.22),
         "accent": accent,
         "on_accent": on_accent,
         "muted": hint,
         "hint": hint,
         "well": _hex_to_rgba(bg, 0.4),
         "well_border": well_border,
+        "sidebar": sidebar,
+        "bar0": bar0,
+        "bar_fill": bar_fill,
+        "card": bar0,
+        "control": quiet0,
+        "control_hover": bar1,
+        "switch_off": _mix_hex(bg, border, 0.55),
+        "hairline": border,
+        "nav_hover": _hex_to_rgba(accent, 0.22),
+        "nav_selected": accent,
     }
 
 
@@ -2030,7 +2083,7 @@ def choose(
 
     outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
     outer.get_style_context().add_class("hyprcore-root")
-    _glass_root(outer, alpha=1.0, radius=16, color="#1e1e1e")
+    _glass_root(outer, alpha=1.0, radius=16)
     outer.set_hexpand(True)
     outer.set_vexpand(True)
     win.add(outer)
@@ -2106,7 +2159,7 @@ def _base_panel(
 
     outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
     outer.get_style_context().add_class("hyprcore-root")
-    _glass_root(outer, alpha=1.0, radius=16, color="#1e1e1e")
+    _glass_root(outer, alpha=1.0, radius=16)
     outer.set_hexpand(True)
     outer.set_vexpand(True)
     win.add(outer)
@@ -2972,7 +3025,7 @@ def show_drilldown(
 
     outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     outer.get_style_context().add_class("hyprcore-root")
-    _glass_root(outer, alpha=1.0, radius=16, color="#1e1e1e")
+    _glass_root(outer, alpha=1.0, radius=16)
     win.add(outer)
 
     def _quit() -> None:
@@ -3056,7 +3109,7 @@ def show_hub(
     outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     outer.get_style_context().add_class("hyprcore-root")
     outer.get_style_context().add_class("hyprcore-hub")
-    _glass_root(outer, alpha=1.0, radius=16, color="#1e1e1e")
+    _glass_root(outer, alpha=1.0, radius=16)
     win.add(outer)
 
     body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)

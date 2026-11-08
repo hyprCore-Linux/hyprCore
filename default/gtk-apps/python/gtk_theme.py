@@ -818,148 +818,26 @@ def select_theme(
 
 
 def sync_desktop_theme(profile: Optional[Profile] = None) -> bool:
-    """Force-reset hyprbars + Waybar / mako / fuzzel / system GTK dialog colors."""
+    """Force-reset Waybar / mako / fuzzel / system GTK dialog colors."""
     profile = profile or load_profile()
-    sync_hyprbars(profile)
     sync_shell_chrome(profile)
     return True
 
 
 def sync_hyprbars(profile: Optional[Profile] = None) -> bool:
-    """Rewrite hyprbars colors to match the GTK theme profile (best-effort).
-
-    Bar / button fill use the elevated surface color (same idea as GTK
-    headerbars). Title and glyphs use the profile foreground.
-    """
-    profile = profile or load_profile()
-    return sync_hyprbars_colors(
-        profile.surface_hex(), profile.foreground, chrome=profile.chrome
-    )
+    """Hyprbars is not used."""
+    return True
 
 
 def sync_hyprbars_colors(
-    bar_hex: str, text_hex: str, chrome: Optional[WindowChrome] = None
+    bar_hex: str, text_hex: str, chrome: Optional["WindowChrome"] = None
 ) -> bool:
-    ch = chrome or WindowChrome()
-    b0, b1 = _chrome_bar_stops(ch, bar_hex, text_hex)
-    i0, i1 = _chrome_bar_inactive_stops(ch, bar_hex)
-    bar_rgb = _hex_to_hypr_rgb(b0)
-    bar2_rgb = _hex_to_hypr_rgb(b1)
-    ibar_rgb = _hex_to_hypr_rgb(i0)
-    ibar2_rgb = _hex_to_hypr_rgb(i1)
-    text_rgb = _hex_to_hypr_rgb(text_hex)
-    if not bar_rgb or not bar2_rgb or not ibar_rgb or not ibar2_rgb or not text_rgb:
-        return False
-    bar_rgba = f"rgba({bar_rgb[4:10]}ff)"
-    bar2_rgba = f"rgba({bar2_rgb[4:10]}ff)"
-    ibar_rgba = f"rgba({ibar_rgb[4:10]}ff)"
-    ibar2_rgba = f"rgba({ibar2_rgb[4:10]}ff)"
-    direction = "rtl" if ch.gradient == "rtl" else "ltr"
-    if ch.button_kit == "nerd":
-        _ensure_symbols_nerd_font()
-
-    path = _hyprland_conf_path()
-    if path is not None and path.is_file():
-        try:
-            original = path.read_text(encoding="utf-8")
-        except OSError:
-            original = None
-        if original is not None:
-            out = original
-            out = _replace_hypr_assign(out, "bar_color", bar_rgba)
-            out = _replace_or_insert_hypr_assign(out, "bar_color2", bar2_rgba, "bar_color")
-            out = _replace_or_insert_hypr_assign(
-                out, "bar_color_inactive", ibar_rgba, "bar_color2"
-            )
-            out = _replace_or_insert_hypr_assign(
-                out, "bar_color_inactive2", ibar2_rgba, "bar_color_inactive"
-            )
-            out = _replace_or_insert_hypr_assign(
-                out, "bar_gradient", direction, "bar_color_inactive2"
-            )
-            out = _replace_hypr_assign(out, "col.text", text_rgb)
-            out = _replace_hypr_assign(out, "inactive_button_color", ibar_rgb)
-            out = _replace_hypr_assign(out, "bar_text_font", _chrome_bar_font(ch))
-            out = _rewrite_hyprbars_buttons(out, bar_rgb, text_rgb, ch)
-            if out != original:
-                try:
-                    path.write_text(out, encoding="utf-8")
-                except OSError:
-                    pass
-
-    if not _theme_session_safe():
-        if ch.button_kit == "nerd":
-            _ensure_symbols_nerd_font()
-        _hyprctl_keyword("plugin:hyprbars:bar_color", bar_rgba)
-        _hyprctl_keyword("plugin:hyprbars:col.text", text_rgb)
-        _hyprctl_keyword("plugin:hyprbars:inactive_button_color", ibar_rgb)
-        _hyprctl_keyword("plugin:hyprbars:bar_text_font", _chrome_bar_font(ch))
-        _hyprctl_hyprbarsgradient(
-            f"{bar_rgba} {bar2_rgba} {ibar_rgba} {ibar2_rgba} {direction}"
-        )
-        _apply_hyprbars_button_keywords(bar_rgb, text_rgb, ch)
+    """Hyprbars is not used."""
     return True
 
 
 def _chrome_bar_font(chrome: WindowChrome) -> str:
     return "Symbols Nerd Font" if chrome.button_kit == "nerd" else "DejaVu Sans"
-
-
-def _ensure_symbols_nerd_font() -> None:
-    dests = [
-        Path.home() / ".local/share/fonts/SymbolsNerdFont-Regular.ttf",
-        Path("/usr/local/share/fonts/truetype/nerd-fonts/SymbolsNerdFont-Regular.ttf"),
-        Path("/usr/share/fonts/truetype/nerd-fonts/SymbolsNerdFont-Regular.ttf"),
-    ]
-    if any(p.is_file() for p in dests):
-        return
-    for src in dests[1:]:
-        if src.is_file():
-            dest = dests[0]
-            try:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dest)
-                subprocess.run(
-                    ["fc-cache", "-f", str(dest.parent)],
-                    check=False,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except OSError:
-                pass
-            return
-
-
-def _apply_hyprbars_button_keywords(
-    bar_rgb: str, text_rgb: str, chrome: WindowChrome
-) -> None:
-    path = _hyprland_conf_path()
-    if path is not None and path.is_file():
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            text = ""
-        any_btn = False
-        for line in text.splitlines():
-            trimmed = line.lstrip()
-            if trimmed.startswith("hyprbars-button"):
-                value = trimmed.split("=", 1)[-1].strip() if "=" in trimmed else ""
-                if value:
-                    _hyprctl_keyword("plugin:hyprbars:hyprbars-button", value)
-                    any_btn = True
-        if any_btn:
-            return
-    size = str(chrome.button_size)
-    for icon, action in (
-        (chrome.close, "hyprctl dispatch closewindow activewindow"),
-        (chrome.maximize, "hyprctl dispatch fullscreen 1"),
-        (chrome.minimize, "hyprctl dispatch movetoworkspacesilent special:minimized"),
-    ):
-        _hyprctl_keyword(
-            "plugin:hyprbars:hyprbars-button",
-            f"{bar_rgb}, {size}, {icon}, {action}, {text_rgb}",
-        )
 
 
 def _hyprland_conf_path() -> Optional[Path]:
@@ -1047,49 +925,6 @@ def _replace_or_insert_hypr_assign(text: str, key: str, value: str, after_key: s
     return "".join(out)
 
 
-def _rewrite_hyprbars_buttons(
-    text: str, bar_rgb: str, text_rgb: str, chrome: WindowChrome
-) -> str:
-    lines = text.splitlines(keepends=True)
-    out: list[str] = []
-    for line in lines:
-        bare = line.rstrip("\r\n")
-        nl = line[len(bare) :]
-        if bare.lstrip().startswith("hyprbars-button"):
-            out.append(
-                _rewrite_one_hyprbars_button(bare, bar_rgb, text_rgb, chrome) + (nl or "\n")
-            )
-        else:
-            out.append(line)
-    return "".join(out)
-
-
-def _rewrite_one_hyprbars_button(
-    line: str, bar_rgb: str, text_rgb: str, chrome: WindowChrome
-) -> str:
-    indent = line[: len(line) - len(line.lstrip())]
-    trimmed = line.lstrip()
-    if "=" not in trimmed:
-        return line
-    rest = trimmed.split("=", 1)[1].strip()
-    commas = [i for i, c in enumerate(rest) if c == ","]
-    if len(commas) < 3:
-        return line
-    after_icon = rest[commas[2] + 1 :].strip()
-    lower = after_icon.lower()
-    idx = max(lower.rfind(", rgb("), lower.rfind(",rgba("), lower.rfind(",rgb("))
-    action = after_icon[:idx].strip() if idx >= 0 else after_icon
-    act = action.lower()
-    if "killactive" in act or "closewindow" in act:
-        icon = chrome.close
-    elif "fullscreen" in act:
-        icon = chrome.maximize
-    else:
-        icon = chrome.minimize
-    size = str(chrome.button_size)
-    return f"{indent}hyprbars-button = {bar_rgb}, {size}, {icon}, {action}, {text_rgb}"
-
-
 def _hypr_env() -> dict[str, str]:
     env = os.environ.copy()
     if env.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -1125,41 +960,6 @@ def _hyprctl_keyword(key: str, value: str) -> None:
         )
     except Exception:
         pass
-
-
-def _hyprctl_dispatch(name: str, args: str) -> None:
-    if not shutil.which("hyprctl"):
-        return
-    try:
-        subprocess.run(
-            ["hyprctl", "dispatch", name, args],
-            env=_hypr_env(),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=5,
-        )
-    except Exception:
-        pass
-
-
-def _hyprctl_hyprbarsgradient(args: str) -> None:
-    if not shutil.which("hyprctl"):
-        return
-    try:
-        subprocess.run(
-            ["hyprctl", "hyprbarsfill", args],
-            env=_hypr_env(),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=5,
-        )
-    except Exception:
-        pass
-    _hyprctl_dispatch("hyprbarsgradient", args)
 
 
 def _theme_session_safe() -> bool:
@@ -2707,22 +2507,8 @@ windowcontrols button {
 
 
 def hyprbars_active() -> bool:
-    """True when the Hyprland hyprbars plugin is loaded."""
-    if not shutil.which("hyprctl"):
-        return False
-    try:
-        out = subprocess.run(
-            ["hyprctl", "plugin", "list"],
-            env=_hypr_env(),
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-    except Exception:
-        return False
-    return "plugin hyprbars" in (out.stdout or "").lower()
+    """Hyprbars is not part of this desktop."""
+    return False
 
 
 def headerbar_show_title_buttons() -> bool:

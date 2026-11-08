@@ -26,6 +26,7 @@ for _sbin in \
   "$TARGET/usr/local/sbin/hyprcore-apply-server-packages.sh" \
   "$TARGET/usr/local/sbin/hyprcore-apply-desktop-profile.sh" \
   "$TARGET/usr/local/sbin/hyprcore-install-hyprland-backports.sh" \
+  "$TARGET/usr/local/sbin/hyprcore-install-kernel-latest.sh" \
   "$TARGET/usr/local/sbin/hyprcore-apply-server-profile.sh"; do
   if [[ -f "$_sbin" ]]; then
     chmod 0755 "$_sbin"

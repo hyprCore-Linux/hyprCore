@@ -72,8 +72,6 @@ class ConfigsWindow(Gtk.ApplicationWindow):
 
         header = Gtk.HeaderBar()
         header.set_show_title_buttons(True)
-        self._title = Gtk.Label(label="Configs")
-        header.set_title_widget(self._title)
         self.set_titlebar(header)
         if gtk_theme is not None:
             try:
@@ -85,6 +83,9 @@ class ConfigsWindow(Gtk.ApplicationWindow):
                 )
             except Exception:
                 pass
+        self._title = getattr(self, "_gtk_theme_title_label", None) or Gtk.Label(
+            label="Configs"
+        )
 
         self.root_label = Gtk.Label(xalign=0)
         self.root_label.add_css_class("dim-label")

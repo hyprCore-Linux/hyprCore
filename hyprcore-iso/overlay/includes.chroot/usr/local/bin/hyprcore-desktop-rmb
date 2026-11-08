@@ -42,7 +42,7 @@ if ! python3 - "${_x}" "${_y}" <<'PY'
 import json, subprocess, sys
 
 x, y = int(sys.argv[1]), int(sys.argv[2])
-BAR_SLACK = 40  # hyprbars height when bar_part_of_window=false sits above client box
+BAR_SLACK = 0
 
 def load(cmd):
     try:

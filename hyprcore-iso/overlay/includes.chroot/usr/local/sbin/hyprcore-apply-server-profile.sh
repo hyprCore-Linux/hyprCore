@@ -130,11 +130,9 @@ rm -f /usr/local/bin/hyprcore-settings \
 	/usr/local/bin/hyprcore-cava \
 	/usr/local/bin/hyprcore-power-settings \
 	/usr/local/bin/hyprcore-ensure-power-manager \
-	/usr/local/bin/hyprcore-ensure-hyprspace \
-	/usr/local/bin/hyprcore-fix-hyprspace-now \
 	/usr/local/bin/hyprcore-overview-defaults \
 	/usr/local/bin/hyprcore-overview-toggle \
-	/usr/local/bin/hyprcore-ensure-hyprbars \
+	/usr/local/bin/hyprcore-ensure-hyprtabs \
 	/usr/local/bin/hyprcore-session-action 2>/dev/null || true
 
 _strip_desktop_configs_from() {

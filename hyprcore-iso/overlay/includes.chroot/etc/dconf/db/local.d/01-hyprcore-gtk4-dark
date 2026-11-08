@@ -1,5 +1,5 @@
 # GTK4/libadwaita apps ignore GTK3 themes; use Adwaita dark.
-# Window chrome comes from hyprbars (not GTK CSD button-layout).
+# Window chrome comes from the suite GTK theme.
 [org/gnome/desktop/interface]
 color-scheme='prefer-dark'
 icon-theme='Papirus-Dark'

@@ -157,9 +157,9 @@ elif command -v xfce4-power-manager >/dev/null 2>&1; then
 	xfce4-power-manager --daemon &
 fi
 
-# Titlebar buttons (hyprbars) for windows without GTK CSD; also hyprtabs prefs.
-if [ -x /usr/local/bin/hyprcore-ensure-hyprbars ]; then
-	/usr/local/bin/hyprcore-ensure-hyprbars &
+# Screen-top tabs when hyprtabs prefs are on.
+if [ -x /usr/local/bin/hyprcore-ensure-hyprtabs ]; then
+	/usr/local/bin/hyprcore-ensure-hyprtabs &
 fi
 
 # Re-apply float / tile / tabs layout once Hyprland answers (tabs needs the strip).
@@ -180,7 +180,7 @@ fi
 	fi
 ) &
 
-# Match hyprbars + Waybar / shell chrome to the active GTK suite theme.
+# Match Waybar / shell chrome to the active GTK suite theme.
 # Delay until Hyprland answers. Soft sync only: HYPRCORE_THEME_NO_HYPR_RELOAD
 # skips `hyprctl reload`, waybar kill/respawn, and portal restarts — those
 # freeze the compositor when run during logout→login bring-up.
@@ -194,7 +194,7 @@ if [ -f /usr/share/hyprcore/gtk-theme/python/gtk_theme.py ]; then
 			_i=$((_i + 1))
 			sleep 0.25
 		done
-		# Let hyprbars / waybar / portals finish first paint + activation.
+		# Let waybar / portals finish first paint + activation.
 		sleep 5
 		export HYPRCORE_THEME_NO_HYPR_RELOAD=1
 		export PYTHONPATH="/usr/share/hyprcore/gtk-theme/python${PYTHONPATH:+:$PYTHONPATH}"

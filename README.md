@@ -2,12 +2,12 @@
 
 Created by Kevin Hinds.
 
-**hyprCore** is a Debian Trixie workstation live ISO built around **Hyprland** on Wayland. After a Desktop install, LightDM autologins into the `hyprcore-hyprland` session.
+**hyprCore** is a Debian **13 (trixie)** workstation live ISO built around **Hyprland 0.56.2** on Wayland. After a Desktop install, LightDM autologins into the `hyprcore-hyprland` session.
 
 | | |
 |---|---|
 | **Target machine** | `hyprcore` |
-| **Base layer** | Debian 13 Trixie (trixie-backports for Hyprland; kernel stays on stock 6.12 LTS for NVIDIA DKMS) |
+| **Base layer** | Debian **13 Trixie** (Hyprland **0.56.2** from snapshot; hyprpaper/xdph from sid; kernel from trixie-backports) |
 | **Compositor** | Hyprland (Wayland native) |
 | **Look** | GTK **Adwaita-dark**; icons **Papirus** (yellow/manila folders); Hyprland chrome **black / red / white** |
 
@@ -27,30 +27,18 @@ GNU General Public License v3.0. See [LICENSE](LICENSE).
 
 ---
 
-## Architecture — backports & Hyprland
+## Architecture — Debian 13 (trixie) + Hyprland 0.56.2
 
-To get a modern, hardware-accelerated Wayland desktop while keeping Debian’s stability, use the official **backports** channel for the graphics stack. The live ISO already does this via hook 997; the steps below are the manual equivalent.
+hyprCore targets **Debian 13 / trixie**. Sid ships Hyprland **0.57+**, so the ISO:
 
-### Add Debian Backports
+1. Debootstraps **trixie** (`LB_DISTRIBUTION=trixie`)
+2. Pins `hyprland` / `hyprland-dev` to **0.56.2+ds-3** (`preferences.d/hyprcore-hyprland-056`)
+3. Fetches those two `.deb`s from **snapshot.debian.org** and installs companions from **sid** (`-t unstable`):
+   `hyprpaper`, `xdg-desktop-portal-hyprland`, `hyprland-guiutils`, `hyprpicker`
 
-Edit `/etc/apt/sources.list` or create `/etc/apt/sources.list.d/backports.list`:
+Hook **997** and Calamares Desktop both run `hyprcore-install-hyprland-backports.sh` (filename kept for Calamares compatibility).
 
-```text
-deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
-```
-
-```bash
-sudo apt update
-```
-
-### Install compositor stack (from backports)
-
-```bash
-sudo apt install -t trixie-backports \
-  hyprland xdg-desktop-portal-hyprland hyprpaper hyprpicker
-```
-
-Keep **linux-image-amd64** / **linux-headers-amd64** on stock trixie 6.12. NVIDIA 550 DKMS does not build on the 7.x kernel from backports; installing those metas with `-t trixie-backports` is what broke `apt upgrade`.
+Kernel: hook **996** installs **linux-image-amd64** + **linux-headers-amd64** from **trixie-backports** (latest Debian 13 / 7.1.x). No NVIDIA DKMS freeze.
 
 Associated infrastructure (also on the ISO):
 
@@ -89,13 +77,13 @@ What is **baked into the slim live ISO** and what **Calamares apt-installs on di
 ### Boot → session
 
 ```text
-GRUB → Linux (trixie 6.12 LTS) → LightDM → hyprcore-hyprland → start-hyprland
+GRUB → Linux (trixie-backports kernel) → LightDM → hyprcore-hyprland → start-hyprland
 ```
 
 | Layer | Component | Notes |
 |-------|-----------|--------|
 | Display manager | **LightDM** + gtk greeter | Live ISO autologins as `live`; installed disk autologins into Hyprland |
-| Wayland compositor | **Hyprland** (backports) | Tiling WM; `start-hyprland` + `hyprland-guiutils` |
+| Wayland compositor | **Hyprland 0.56.2** (snapshot on trixie) | Tiling WM; `start-hyprland` + `hyprland-guiutils` |
 | Session entry | `hyprcore-hyprland-session.sh` | Sets env, execs `start-hyprland` |
 | Session startup | `hyprcore-hyprland-session-start.sh` | `exec-once` from `hyprland.conf` |
 | Wallpaper | **hyprpaper** | hyprCore background via `hyprpaper.conf` |
@@ -118,7 +106,7 @@ These daemons/apps are launched by `hyprcore-hyprland-session-start.sh` (or Hypr
 | Role | App | Default bind |
 |------|-----|--------------|
 | App launcher | **Fuzzel** | `Ctrl+Super`, `Super+A` |
-| Workspace overview | **Hyprspace** (4 persistent desktops) | `Super` (release alone) |
+| Workspace overview | **window-manager** preview grid | `Super` (release alone) |
 | Settings | **hypr-settings** | `Super+,` / `Alt+Space` |
 | File manager | **gtk-files** | `Super+E` |
 | Text editor | **gtk-edit** | `Super+G` |
@@ -395,7 +383,7 @@ unpackfs (slim live)
   → strip live autologin leftovers
   → apt-install server packages          # every profile
   → packages (remove live/calamares)
-  → Desktop: apt-install desktop + backports Hyprland + Chrome (+ Cursor only if personalize/install)
+  → Desktop: apt-install desktop + Hyprland 0.56.2 stack + Chrome (+ Cursor only if personalize/install)
   → displaymanager
   → Server: purge slim-live GUI + console/SSH
 ```
@@ -423,7 +411,7 @@ For pipeline detail, customization map, and live↔recipe sync surfaces, see [IS
 
 - **Slim live image** — Hyprland chrome, Firefox, net/BT, Calamares (not the full workstation)
 - **Disk install via Calamares** (needs network):
-  - **Desktop** (default) — apt-install server + desktop stacks, backports Hyprland/kernel, Chrome → LightDM autologin → `hyprcore-hyprland` (Cursor: `personalize/install` only)
+  - **Desktop** (default) — apt-install server + desktop stacks, Hyprland 0.56.2 stack, Chrome → LightDM autologin → `hyprcore-hyprland` (Cursor: `personalize/install` only)
   - **Server** — apt-install server stack, purge live GUI + Hyprland runtime, clear desktop skel/gtk-apps → console + SSH
 
 Tooling is **Debian `live-build` (`lb config` / `lb build`)**, not a hand-rolled `mkisofs` recipe. Output is an **iso-hybrid** (BIOS GRUB + UEFI GRUB).
@@ -511,15 +499,15 @@ install-list
   ├── server    → hyprcore-server-packages.list  → Calamares apt (every profile)
   └── desktop   → hyprcore-desktop-packages.list → Calamares apt (Desktop only)
 
-Hook 997 (live): Hyprland + kernel from trixie-backports (not in .list.chroot)
-Calamares Desktop: same backports + Chrome (Cursor only via personalize/install; live hooks 996/9945 disabled)
+Hook 997 (live): Hyprland 0.56.2 (snapshot) + sid hyprpaper/xdph (not in .list.chroot)
+Calamares Desktop: same Hyprland stack + Chrome (Cursor only via personalize/install; live hooks 996/9945 disabled)
 ```
 
 #### Calamares exec sequence (disk install)
 
 From `share/calamares-hyprcore/etc/calamares/settings.conf`:
 
-`unpackfs` → strip live LightDM leftovers → apt server packages → `packages` (remove live/Calamares) → Desktop hooks (desktop pkgs + backports Hyprland + Chrome [+ personalize/install e.g. Cursor]) → `displaymanager` → Server profile purge → SSH prep → GRUB/bootloader/initramfs
+`unpackfs` → strip live LightDM leftovers → apt server packages → `packages` (remove live/Calamares) → Desktop hooks (desktop pkgs + Hyprland 0.56.2 stack + Chrome [+ personalize/install e.g. Cursor]) → `displaymanager` → Server profile purge → SSH prep → GRUB/bootloader/initramfs
 
 ---
 
@@ -546,7 +534,7 @@ Notable areas:
 - **Stock desktop configs:** `default/configs/` (hypr, waybar, fuzzel, mako, GTK, …) staged to `etc/skel/configs` by `share/merge-personalize-dropins.sh` (`personalize/configs` overlays). Waybar power: `custom/power` → `hyprcore-waybar-click power` → `hyprcore_quick_settings.py` (Log Out / Reboot / Shut Down) → `hyprcore-session-action`.
 - **LightDM:** `etc/lightdm/` (live autologin, Hyprland session, greeter)
 - **Helpers:** `usr/local/bin/hyprcore-*` (settings, launchers, X11 wrappers, Calamares live, `hyprcore-waybar-click`, `hyprcore-session-action`) plus `usr/share/hyprcore/hyprcore_quick_settings.py`
-- **APT:** `etc/apt/sources.list.d/hyprcore-backports.list`, `preferences.d/hyprcore-kernel-lts` (blocks backports kernels; NVIDIA DKMS needs 6.12)
+- **APT:** `etc/apt/sources.list.d/hyprcore-backports.list` (trixie-backports), `hyprcore-sid.list` (low-prio), `preferences.d/hyprcore-hyprland-056` (pin 0.56.2)
 - **SSH live:** `etc/ssh/`, systemd prep units
 - **Desktop entries:** Audacity/Blender wrappers, hyprCore settings apps
 
@@ -567,8 +555,9 @@ Notable areas:
 | `9945` **`.disabled`** | Cursor on live |
 | `995` | contrib/non-free |
 | `996` **`.disabled`** | Chrome on live |
-| `997` | **trixie-backports:** Hyprland stack (kernel stays on 6.12 LTS) |
-| `998` | Hyprspace plugin |
+| `996` | **linux-image/headers** from trixie-backports |
+| `997` | **Hyprland 0.56.2** (snapshot) + sid hyprpaper/xdph |
+| `998` | hyprtabs plugin |
 | `999` | Icon cache + perms |
 | `1000` | `x-www-browser` alternatives |
 | `1001` | `x-terminal-emulator` → gtk-term |
@@ -600,7 +589,7 @@ Stock utilities that **are** shipped: **xarchiver** (archives + MIME), **powerto
 
 #### Calamares / install-time
 
-`share/calamares-hyprcore/` — modules, branding, `usr/local/sbin/hyprcore-*.sh` (apply profiles, strip desktop, NM perms, backports install).
+`share/calamares-hyprcore/` — modules, branding, `usr/local/sbin/hyprcore-*.sh` (apply profiles, strip desktop, NM perms, Hyprland 0.56.2 install).
 
 Merged at setup by `share/merge-calamares-hyprcore.sh`.
 
@@ -772,7 +761,7 @@ Canonical Debian-specific values under `default/metadata/` (Hyprland desktop).
 
 | File | Profile | Used by |
 |------|---------|---------|
-| `debian.env` | Debian trixie | `hyprcore-iso/setup.sh`, `hyprcore-iso/build.sh` |
+| `debian.env` | Debian trixie (13) | `hyprcore-iso/setup.sh`, `hyprcore-iso/build.sh` |
 | `debian.distro.conf` | Debian | Staged to `/etc/hyprcore/distro.conf` on ISO |
 
 ### Key reference
@@ -789,7 +778,7 @@ Canonical Debian-specific values under `default/metadata/` (Hyprland desktop).
 | `LB_ARCHIVE_AREAS` | contrib/non-free/non-free-firmware | `lb config` |
 | `HYPRCORE_DESKTOP_SESSION` | `hyprcore-hyprland` | LightDM autologin |
 | `HYPRCORE_CALAMARES_INSTALLER` | `calamares-install-debian` | live session |
-| `HYPRCORE_ENABLE_BACKPORTS` | `1` | hook 997, Calamares Desktop profile hooks |
+| `HYPRCORE_ENABLE_BACKPORTS` | `1` | legacy flag; hook 997 / Calamares still install Hyprland 0.56.2 stack |
 | `HYPRCORE_FLATPAK_DECIBELS` | `0` | disabled (not in install-list) |
 
 ### Build-time environment (not in debian.env)
@@ -874,8 +863,9 @@ Do not add extra icons here — only this file is copied by the build scripts. `
 | 9945 | Cursor on live — **disabled**; stock Desktop also skips Cursor (`personalize/install`) |
 | 995 | APT contrib/non-free |
 | 996 | Google Chrome — **disabled** on slim live (Calamares Desktop only) |
-| 997 | trixie-backports: Hyprland stack (not kernel 7.x) |
-| 998 | Hyprspace |
+| 996 | linux-image/headers from trixie-backports |
+| 997 | Hyprland 0.56.2 (snapshot) + sid hyprpaper/xdph |
+| 998 | hyprtabs |
 | 999 | Papirus yellow folders + icon cache + script permissions |
 | 1000 | x-www-browser alternative (Chrome if present) |
 | 1001 | x-terminal-emulator → gtk-term |
@@ -887,8 +877,8 @@ Do not add extra icons here — only this file is copied by the build scripts. `
 3. Boot live ISO → slim Hyprland + Waybar + Firefox; Calamares opens (no Chrome/Cursor on live).
 4. **Desktop** install (with network) → reboot → autologin lands in Hyprland; Chrome present (Cursor only if `personalize/install/cursor.sh`).
 5. **Server** install (with network) → reboot → console + SSH; live GUI purged.
-6. `uname -r` shows **6.12.x**; `apt-cache policy linux-image-amd64` prefers trixie over `trixie-backports` (pin -1).
-7. Desktop: `hyprland`, `waybar`, `fuzzel`, `mako`, `hypr-settings`, `gtk-term`, `gtk-files`, `gtk-edit`, `gtk-image`, `gtk-video`, `gtk-player`, `xarchiver`, `google-chrome-stable`, SSH.
+6. `uname -r` matches trixie-backports `linux-image-amd64` (e.g. 7.1.x); `cat /etc/os-release` shows `VERSION_CODENAME=trixie`.
+7. Desktop: `hyprland` **0.56.2**, sid `hyprpaper` / `xdg-desktop-portal-hyprland`, plus `waybar`, `fuzzel`, `mako`, `hypr-settings`, `gtk-term`, `gtk-files`, `gtk-edit`, `gtk-image`, `gtk-video`, `gtk-player`, `xarchiver`, `google-chrome-stable`, SSH.
 8. **Super+Return** opens gtk-term; **Super+E** opens gtk-files; **Super+G** opens gtk-edit; **Super+,** opens `hypr-settings`.
 9. Audacity and Blender launch from menu (XWayland wrappers).
 10. Menus: no **Help** (yelp), no Dropbox, no nwg-clipman / pavucontrol / separate Wi‑Fi·BT editors.

@@ -331,69 +331,6 @@ if [[ -x "$_hypr_settings/hyprcore-install.sh" ]]; then
   DESTDIR="$BUILD_ROOT/config/includes.chroot" "$_hypr_settings/hyprcore-install.sh"
 fi
 
-# hyprframes plugin sources — compiled in hook 998 against ISO Hyprland ABI.
-# Prefer ../Packages (see share/linuxos-layout.sh); fall back to other sibling paths.
-_hyprframes=""
-if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprframes/CMakeLists.txt" ]]; then
-  _hyprframes="${LINUXOS_PACKAGES}/hyprframes"
-fi
-[[ -n "${_hyprframes}" ]] || _hyprframes="$(cd "$REPO_ROOT/../Packages/hyprframes" 2>/dev/null && pwd || true)"
-[[ -n "${_hyprframes}" ]] || _hyprframes="$(cd "$REPO_ROOT/../hyprframes" 2>/dev/null && pwd || true)"
-if [[ -n "${_hyprframes}" && -f "${_hyprframes}/CMakeLists.txt" ]]; then
-  _ib_src="$BUILD_ROOT/config/includes.chroot/usr/src/hyprcore/hyprframes"
-  mkdir -p "$_ib_src"
-  shopt -s nullglob
-  for _f in "${_hyprframes}"/*.cpp "${_hyprframes}"/*.hpp \
-            "${_hyprframes}/CMakeLists.txt" "${_hyprframes}/VERSION" \
-            "${_hyprframes}/example.png"; do
-    [[ -f "$_f" ]] || continue
-    cp -a "$_f" "$_ib_src/"
-  done
-  shopt -u nullglob
-  # hyprutils-0.13 shim required for Hyprland 0.55.2 vs system 0.14
-  if [[ -d "${_hyprframes}/third_party/hyprutils-0.13" ]]; then
-    mkdir -p "$_ib_src/third_party"
-    cp -a "${_hyprframes}/third_party/hyprutils-0.13" "$_ib_src/third_party/"
-  fi
-  echo "Staged hyprframes sources → usr/src/hyprcore/hyprframes"
-else
-  echo "WARNING: Packages/hyprframes not found — ISO will not build libhyprframes.so" >&2
-fi
-
-# hyprCore hyprbars (gradient + bar_image) — compiled in hook 998.
-_hyprbars=""
-if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprbars/Makefile" ]]; then
-  _hyprbars="${LINUXOS_PACKAGES}/hyprbars"
-fi
-[[ -n "${_hyprbars}" ]] || _hyprbars="$(cd "$REPO_ROOT/../Packages/hyprbars" 2>/dev/null && pwd || true)"
-if [[ -n "${_hyprbars}" && -f "${_hyprbars}/Makefile" ]]; then
-  _hb_src="$BUILD_ROOT/config/includes.chroot/usr/src/hyprcore/hyprbars"
-  rm -rf "$_hb_src"
-  mkdir -p "$_hb_src"
-  shopt -s nullglob
-  for _f in "${_hyprbars}"/*.cpp "${_hyprbars}"/*.hpp \
-            "${_hyprbars}/Makefile" "${_hyprbars}/CMakeLists.txt" \
-            "${_hyprbars}/meson.build" "${_hyprbars}/README.md"; do
-    [[ -f "$_f" ]] || continue
-    cp -a "$_f" "$_hb_src/"
-  done
-  shopt -u nullglob
-  if [[ -d "${_hyprbars}/examples" ]]; then
-    cp -a "${_hyprbars}/examples" "$_hb_src/"
-  fi
-  _hf_tp="${_hyprframes:+${_hyprframes}/third_party/hyprutils-0.13}"
-  if [[ -d "${_hyprbars}/third_party/hyprutils-0.13" ]]; then
-    mkdir -p "$_hb_src/third_party"
-    cp -a "${_hyprbars}/third_party/hyprutils-0.13" "$_hb_src/third_party/"
-  elif [[ -n "${_hf_tp}" && -d "${_hf_tp}" ]]; then
-    mkdir -p "$_hb_src/third_party"
-    cp -a "${_hf_tp}" "$_hb_src/third_party/"
-  fi
-  echo "Staged Packages/hyprbars → usr/src/hyprcore/hyprbars"
-else
-  echo "WARNING: Packages/hyprbars not found — ISO falls back to upstream hyprbars" >&2
-fi
-
 # hyprCore hyprtabs (bottom-of-screen window tabs) — compiled in hook 998.
 _hyprtabs=""
 if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprtabs/Makefile" ]]; then
@@ -412,16 +349,9 @@ if [[ -n "${_hyprtabs}" && -f "${_hyprtabs}/Makefile" ]]; then
     cp -a "$_f" "$_ht_src/"
   done
   shopt -u nullglob
-  _hf_tp="${_hyprframes:+${_hyprframes}/third_party/hyprutils-0.13}"
   if [[ -d "${_hyprtabs}/third_party/hyprutils-0.13" ]]; then
     mkdir -p "$_ht_src/third_party"
     cp -a "${_hyprtabs}/third_party/hyprutils-0.13" "$_ht_src/third_party/"
-  elif [[ -n "${_hf_tp}" && -d "${_hf_tp}" ]]; then
-    mkdir -p "$_ht_src/third_party"
-    cp -a "${_hf_tp}" "$_ht_src/third_party/"
-  elif [[ -d "${_hyprbars}/third_party/hyprutils-0.13" ]]; then
-    mkdir -p "$_ht_src/third_party"
-    cp -a "${_hyprbars}/third_party/hyprutils-0.13" "$_ht_src/third_party/"
   fi
   echo "Staged Packages/hyprtabs → usr/src/hyprcore/hyprtabs"
 else

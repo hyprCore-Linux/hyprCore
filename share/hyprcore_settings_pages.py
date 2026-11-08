@@ -62,19 +62,7 @@ _APP_CATEGORIES = (
 )
 
 _CHROME_PREFS = Path.home() / ".config" / "hypr" / "hyprcore-window-chrome.json"
-_DEFAULT_BAR_IMAGE = Path.home() / ".local/share/hyprcore" / "hyprbars" / "tile-grey-round.png"
 _PLUGIN_SO_CANDIDATES = {
-    "hyprbars": (
-        Path.home() / ".local/lib/hyprland/plugins/libhyprbars.so",
-        Path("/usr/local/lib/hyprland/plugins/libhyprbars.so"),
-        Path("/usr/lib/x86_64-linux-gnu/hyprland/plugins/libhyprbars.so"),
-        Path("/usr/lib/x86_64-linux-gnu/hyprland/plugins/hyprbars.so"),
-    ),
-    "hyprframes": (
-        Path.home() / ".local/lib/hyprland/plugins/libhyprframes.so",
-        Path("/usr/local/lib/hyprland/plugins/libhyprframes.so"),
-        Path("/usr/lib/x86_64-linux-gnu/hyprland/plugins/libhyprframes.so"),
-    ),
     "hyprtabs": (
         Path.home() / ".local/lib/hyprland/plugins/libhyprtabs.so",
         Path("/usr/local/lib/hyprland/plugins/libhyprtabs.so"),
@@ -140,26 +128,15 @@ def _section(text: str) -> Gtk.Label:
 
 
 def _chrome_prefs() -> dict[str, bool]:
-    # hyprbars is always on; Themes toggles tiled bar images instead.
-    data = {
-        "hyprbars": True,
-        "hyprbars_images": True,
-        "hyprframes": True,
-        "hyprtabs": False,
-    }
+    data = {"hyprtabs": False}
     try:
         raw = json.loads(_CHROME_PREFS.read_text(encoding="utf-8"))
     except Exception:
         return data
     if not isinstance(raw, dict):
         return data
-    for key in ("hyprbars", "hyprbars_images", "hyprframes", "hyprtabs"):
-        if key in raw:
-            data[key] = bool(raw[key])
-    # Migrate old "hyprbars off" preference → images off (bars stay loaded).
-    if "hyprbars_images" not in raw and "hyprbars" in raw and not bool(raw.get("hyprbars")):
-        data["hyprbars_images"] = False
-    data["hyprbars"] = True
+    if "hyprtabs" in raw:
+        data["hyprtabs"] = bool(raw["hyprtabs"])
     return data
 
 
@@ -168,12 +145,8 @@ def _save_chrome_prefs(prefs: dict[str, bool]) -> None:
         # Merge so toggling one switch cannot drop the others.
         current = _chrome_prefs()
         current.update({k: bool(v) for k, v in prefs.items()})
-        current["hyprbars"] = True
         _CHROME_PREFS.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "hyprbars": True,
-            "hyprbars_images": bool(current.get("hyprbars_images", True)),
-            "hyprframes": bool(current.get("hyprframes", True)),
             "hyprtabs": bool(current.get("hyprtabs", False)),
         }
         _CHROME_PREFS.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -201,139 +174,6 @@ def _plugin_loaded(name: str) -> bool:
         return False
     needle = name.lower()
     return any(str(row.get("name") or "").lower() == needle for row in rows if isinstance(row, dict))
-
-
-def _hyprbars_enabled_live() -> bool:
-    if not _plugin_loaded("hyprbars"):
-        return False
-    ok, out = _run(["hyprctl", "getoption", "plugin:hyprbars:enabled"], timeout=3)
-    if not ok:
-        return True
-    for line in (out or "").splitlines():
-        if line.strip().startswith("int:"):
-            try:
-                return int(line.split(":", 1)[1].strip()) != 0
-            except ValueError:
-                break
-    return True
-
-
-def _ensure_hyprbars_on() -> str:
-    """Title bars are always enabled (needed to drag windows)."""
-    prefs = _chrome_prefs()
-    prefs["hyprbars"] = True
-    _save_chrome_prefs(prefs)
-    if not _plugin_loaded("hyprbars"):
-        so = _plugin_so("hyprbars")
-        if not so:
-            return "hyprbars plugin was not found"
-        ok, out = _run(["hyprctl", "plugin", "load", so], timeout=8)
-        if not ok and not _plugin_loaded("hyprbars"):
-            return out or "Could not load hyprbars"
-    _run(["hyprctl", "keyword", "plugin:hyprbars:enabled", "true"], timeout=4)
-    return ""
-
-
-def _set_hyprbars(on: bool) -> str:
-    # Kept for callers; hyprbars cannot be turned off anymore.
-    del on
-    return _ensure_hyprbars_on()
-
-
-def _default_bar_image() -> str:
-    for path in (
-        _DEFAULT_BAR_IMAGE,
-        Path("/usr/share/hyprcore/hyprbars/tile-grey-round.png"),
-        Path("/usr/local/share/hyprcore/hyprbars/tile-grey-round.png"),
-    ):
-        if path.is_file():
-            return str(path)
-    return str(_DEFAULT_BAR_IMAGE)
-
-
-def _rewrite_hyprland_bar_image(path: str) -> None:
-    conf = Path.home() / ".config" / "hypr" / "hyprland.conf"
-    if not conf.is_file():
-        return
-    try:
-        text = conf.read_text(encoding="utf-8")
-    except OSError:
-        return
-    import re
-
-    value = path.strip()
-    repl = f"bar_image = {value}" if value else "bar_image ="
-    new, n = re.subn(r"(?m)^([ \t]*)bar_image\s*=.*$", rf"\1{repl}", text, count=1)
-    if n and new != text:
-        try:
-            conf.write_text(new, encoding="utf-8")
-        except OSError:
-            pass
-
-
-def _hyprbars_images_live() -> bool:
-    ok, out = _run(["hyprctl", "getoption", "plugin:hyprbars:bar_image"], timeout=3)
-    if not ok:
-        return bool(_chrome_prefs().get("hyprbars_images", True))
-    for line in (out or "").splitlines():
-        if line.strip().startswith("str:"):
-            return bool(line.split(":", 1)[1].strip())
-    return bool(_chrome_prefs().get("hyprbars_images", True))
-
-
-def _set_hyprbars_images(on: bool) -> str:
-    """Toggle tiled bar_image; when off, bars use solid GTK theme colors."""
-    err = _ensure_hyprbars_on()
-    if err:
-        return err
-    prefs = _chrome_prefs()
-    prefs["hyprbars_images"] = bool(on)
-    prefs["hyprbars"] = True
-    _save_chrome_prefs(prefs)
-    if on:
-        path = _default_bar_image()
-        _run(["hyprctl", "keyword", "plugin:hyprbars:bar_image", path], timeout=4)
-        _rewrite_hyprland_bar_image(path)
-        return ""
-    _run(["hyprctl", "keyword", "plugin:hyprbars:bar_image", ""], timeout=4)
-    _rewrite_hyprland_bar_image("")
-    # Solid fill from the active GTK suite profile.
-    try:
-        theme = _gtk_theme()
-        if theme is not None:
-            theme.sync_hyprbars()
-    except Exception as exc:
-        return str(exc)
-    return ""
-
-
-def _set_hyprframes(on: bool) -> str:
-    prefs = _chrome_prefs()
-    prefs["hyprframes"] = bool(on)
-    _save_chrome_prefs(prefs)
-    so = _plugin_so("hyprframes")
-    if on:
-        if _plugin_loaded("hyprframes"):
-            return ""
-        if not so:
-            return "hyprframes plugin was not found"
-        ok, out = _run(["hyprctl", "plugin", "load", so], timeout=8)
-        if not ok and not _plugin_loaded("hyprframes"):
-            return out or "Could not load hyprframes"
-        return ""
-    if not _plugin_loaded("hyprframes"):
-        return ""
-    if not so:
-        # Still try unload by common paths.
-        for candidate in _PLUGIN_SO_CANDIDATES["hyprframes"]:
-            _run(["hyprctl", "plugin", "unload", str(candidate)], timeout=6)
-            if not _plugin_loaded("hyprframes"):
-                return ""
-        return "Could not unload hyprframes"
-    ok, out = _run(["hyprctl", "plugin", "unload", so], timeout=6)
-    if _plugin_loaded("hyprframes"):
-        return out or "Could not unload hyprframes"
-    return ""
 
 
 def _hyprtabs_enabled_live() -> bool:
@@ -376,7 +216,6 @@ def _set_hyprtabs(on: bool) -> str:
             if not ok and not _plugin_loaded("hyprtabs"):
                 return out or "Could not load hyprtabs"
         _run(["hyprctl", "keyword", "plugin:hyprtabs:enabled", "true"], timeout=4)
-        _ensure_hyprbars_on()
         # Switch desktop layout to tabbed (full-width under the strip).
         if wm:
             _run([wm, "layout-set", "tabs"], timeout=12)
@@ -385,7 +224,6 @@ def _set_hyprtabs(on: bool) -> str:
         ok, out = _run(["hyprctl", "keyword", "plugin:hyprtabs:enabled", "false"], timeout=4)
         if not ok:
             return out or "Could not disable hyprtabs"
-    _ensure_hyprbars_on()
     if wm:
         _run([wm, "layout-set", "float"], timeout=12)
     return ""
@@ -397,10 +235,7 @@ _PLUGIN_DIRS = (
     Path("/usr/lib/x86_64-linux-gnu/hyprland/plugins"),
 )
 _PLUGIN_COPY = {
-    "hyprbars": ("Hyprbars", "Title bars on windows"),
-    "hyprframes": ("Hyprframes", "Image borders around windows"),
     "hyprtabs": ("Hyprtabs", "Tabs along the top of windows"),
-    "hyprspace": ("Hyprspace", "Workspace overview"),
 }
 
 
@@ -419,7 +254,7 @@ def _installed_plugins() -> list[dict[str, str]]:
             continue
         for path in sorted(directory.glob("*.so")):
             key = _plugin_key(path)
-            if not key or key in found:
+            if not key or key in found or key in {"hyprbars", "hyprframes", "hyprspace"}:
                 continue
             title, desc = _PLUGIN_COPY.get(key, ("", ""))
             if not title:
@@ -432,24 +267,14 @@ def _installed_plugins() -> list[dict[str, str]]:
 
 def _plugin_enabled(plugin_id: str) -> bool:
     prefs = _chrome_prefs()
-    if plugin_id == "hyprbars":
-        if _plugin_loaded("hyprbars"):
-            return _hyprbars_enabled_live()
-        return bool(prefs.get("hyprbars", True))
     if plugin_id == "hyprtabs":
         if _plugin_loaded("hyprtabs"):
             return _hyprtabs_enabled_live()
         return bool(prefs.get("hyprtabs", False))
-    if plugin_id == "hyprframes":
-        return _plugin_loaded("hyprframes")
     return _plugin_loaded(plugin_id)
 
 
 def _set_plugin(plugin_id: str, path: str, on: bool) -> str:
-    if plugin_id == "hyprbars":
-        return _set_hyprbars(on)
-    if plugin_id == "hyprframes":
-        return _set_hyprframes(on)
     if plugin_id == "hyprtabs":
         return _set_hyprtabs(on)
     if on:
@@ -1264,6 +1089,7 @@ def apps_page() -> Gtk.Widget:
 
 def _gtk_theme():
     for path in (
+        os.path.expanduser("~/.local/lib/hyprcore/gtk-apps/gtk-theme/python"),
         "/usr/local/lib/hyprcore/gtk-apps/gtk-theme/python",
         "/usr/share/hyprcore/gtk-theme/python",
     ):

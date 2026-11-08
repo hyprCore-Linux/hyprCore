@@ -41,7 +41,7 @@ LAPTOP_FLOAT_FRAC = (13, 15)
 GAP = 18
 # hyprbars sits above client `at`. A full-bleed window clips the − □ × bar
 # off the top of the monitor (behind/above Waybar). Matches plugin { hyprbars }.
-HYPRBAR_H = 36
+HYPRBAR_H = 0
 HYPRBAR_BTN = 18
 HYPRBAR_BTN_PAD = 10
 HYPRBAR_PAD = 12
@@ -67,13 +67,6 @@ HYPRTABS_SO_CANDIDATES = (
     "/usr/local/lib/hyprland/plugins/libhyprtabs.so",
     "/usr/lib/x86_64-linux-gnu/hyprland/plugins/libhyprtabs.so",
 )
-HYPRBARS_SO_CANDIDATES = (
-    os.path.join(os.path.expanduser("~"), ".local/lib/hyprland/plugins/libhyprbars.so"),
-    "/usr/local/lib/hyprland/plugins/libhyprbars.so",
-    "/usr/lib/x86_64-linux-gnu/hyprland/plugins/libhyprbars.so",
-    "/usr/lib/x86_64-linux-gnu/hyprland/plugins/hyprbars.so",
-)
-
 SKIP_CLASS_SUBSTR = (
     "zenity",
     "polkit",
@@ -1296,18 +1289,11 @@ def _chrome_prefs_update(**kwargs) -> None:
                 raw = loaded
         for key, value in kwargs.items():
             raw[key] = bool(value)
-        # hyprbars is always on; Themes toggles hyprbars_images instead.
-        raw["hyprbars"] = True
-        raw.setdefault("hyprbars_images", True)
-        raw.setdefault("hyprframes", True)
         raw.setdefault("hyprtabs", False)
         os.makedirs(os.path.dirname(CHROME_PREFS), exist_ok=True)
         with open(CHROME_PREFS, "w", encoding="utf-8") as fh:
             json.dump(
                 {
-                    "hyprbars": True,
-                    "hyprbars_images": bool(raw.get("hyprbars_images", True)),
-                    "hyprframes": bool(raw.get("hyprframes", True)),
                     "hyprtabs": bool(raw.get("hyprtabs", False)),
                 },
                 fh,
@@ -1325,13 +1311,6 @@ def _hyprtabs_so() -> str:
     return ""
 
 
-def _hyprbars_so() -> str:
-    for path in HYPRBARS_SO_CANDIDATES:
-        if os.path.isfile(path):
-            return path
-    return ""
-
-
 def _hyprtabs_loaded() -> bool:
     try:
         out = hyprctl("plugin", "list")
@@ -1340,29 +1319,10 @@ def _hyprtabs_loaded() -> bool:
     return "plugin hyprtabs" in out.lower() or "\nhyprtabs" in out.lower() or "hyprtabs by" in out.lower()
 
 
-def _hyprbars_loaded() -> bool:
-    try:
-        out = hyprctl("plugin", "list")
-    except Exception:
-        return False
-    return "plugin hyprbars" in out.lower() or "hyprbars by" in out.lower()
-
-
 def set_hyprbars_plugin(on: bool = True) -> None:
-    """Hyprbars title bars are always enabled (needed to drag windows)."""
-    del on  # API compat — cannot disable.
-    _chrome_prefs_update(hyprbars=True)
-    if not _hyprbars_loaded():
-        so = _hyprbars_so()
-        if so:
-            try:
-                hyprctl("plugin", "load", so)
-            except Exception:
-                pass
-    try:
-        hyprctl("keyword", "plugin:hyprbars:enabled", "true")
-    except Exception:
-        pass
+    """Hyprbars is not part of this desktop."""
+    return
+
 
 
 def set_hyprtabs_plugin(on: bool) -> None:
@@ -1382,7 +1342,6 @@ def set_hyprtabs_plugin(on: bool) -> None:
             hyprctl("keyword", "plugin:hyprtabs:enabled", "true")
         except Exception:
             pass
-        set_hyprbars_plugin(True)
         sync_hyprtabs_bottom_gaps()
         return
     if _hyprtabs_loaded():
@@ -1391,7 +1350,6 @@ def set_hyprtabs_plugin(on: bool) -> None:
         except Exception:
             pass
     sync_hyprtabs_bottom_gaps()
-    set_hyprbars_plugin(True)
 
 
 def _is_xdg_popup(win: dict) -> bool:
@@ -2540,57 +2498,9 @@ def overview_escape() -> None:
     overview_cancel()
 
 
-def _hyprbars_close_button_value(*, highlight: bool) -> str:
-    """hyprbars-button value for the × control (hyprCore replace-in-place by glyph)."""
-    action = "hyprctl dispatch closewindow activewindow"
-    glyph = "rgb(eeffff)"
-    if highlight:
-        return f"rgb(c43e1c), 22, ×, {action}, {glyph}"
-    # Match the bar fill so × is quiet outside overview; gtk-theme may retint later.
-    bar = "rgb(363737)"
-    for path in (
-        os.path.expanduser("~/.config/hypr/hyprland.conf"),
-        os.path.expanduser("~/configs/hypr/hyprland.conf"),
-    ):
-        try:
-            with open(path, encoding="utf-8") as fh:
-                conf = fh.read()
-        except OSError:
-            continue
-        for line in conf.splitlines():
-            trimmed = line.lstrip()
-            if not trimmed.startswith("hyprbars-button") or "×" not in trimmed:
-                continue
-            if "=" not in trimmed:
-                continue
-            value = trimmed.split("=", 1)[1].strip()
-            # Prefer conf when it is not the overview highlight (avoid sticky red).
-            if value.startswith("rgb(c43e1c)"):
-                break
-            return value
-        m = re.search(
-            r"(?m)^\s*bar_color\s*=\s*rgba\(([0-9a-fA-F]{6})",
-            conf,
-        )
-        if m:
-            bar = f"rgb({m.group(1)})"
-        break
-    return f"{bar}, 18, ×, {action}, {glyph}"
-
-
 def _set_overview_close_highlight(enabled: bool) -> None:
-    """Red × only while Super overview is up; quiet bar-matching × otherwise."""
-    value = _hyprbars_close_button_value(highlight=bool(enabled))
-    try:
-        subprocess.run(
-            ["hyprctl", "keyword", "plugin:hyprbars:hyprbars-button", value],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=2,
-        )
-    except Exception:
-        pass
+    """Hyprbars is not used."""
+    return
 
 
 def overview_cancel() -> None:

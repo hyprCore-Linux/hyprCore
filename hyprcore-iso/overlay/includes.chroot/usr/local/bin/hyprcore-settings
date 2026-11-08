@@ -121,9 +121,7 @@ def main() -> int:
         "date-time": "datetime",
         "forecast": "weather",
         "plugin": "plugins",
-        "hyprbars": "plugins",
         "hyprtabs": "plugins",
-        "hyprframes": "plugins",
         "chrome": "plugins",
     }
     section = aliases.get(section, section)

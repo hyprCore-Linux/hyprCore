@@ -89,9 +89,6 @@ class CalendarWindow(Gtk.ApplicationWindow):
 
         header = Gtk.HeaderBar()
         header.set_show_title_buttons(True)
-        self._title = Gtk.Label(label="Calendar")
-        self._title.add_css_class("title")
-        header.set_title_widget(self._title)
         self.set_titlebar(header)
         gtk_theme.attach_profile_menu(
             self,
@@ -101,6 +98,10 @@ class CalendarWindow(Gtk.ApplicationWindow):
                 "Month calendar for the hyprCore Linux GTK apps. "
                 "Sign in to Google Calendar or add .ics files and webcal URLs."
             ),
+        )
+        # Left title label owned by the reveal menubar helper.
+        self._title = getattr(self, "_gtk_theme_title_label", None) or Gtk.Label(
+            label="Calendar"
         )
 
         prev_btn = Gtk.Button.new_from_icon_name("go-previous-symbolic")

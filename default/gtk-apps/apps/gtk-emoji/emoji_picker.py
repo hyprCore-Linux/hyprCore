@@ -41,6 +41,21 @@ class EmojiPickerWindow(Gtk.ApplicationWindow):
         
         # Apply dark theme
         self.apply_dark_theme()
+
+        # Suite chrome: left title + hamburger reveal menubar
+        try:
+            from gtk_theme import attach_profile_menu
+
+            header = Gtk.HeaderBar()
+            self.set_titlebar(header)
+            attach_profile_menu(
+                self,
+                header,
+                about_name="GTK Emoji",
+                about_comments="Pick and copy emoji to the clipboard.",
+            )
+        except Exception as exc:
+            print(f"gtk-theme menu unavailable: {exc}")
         
         # Create the UI
         self.setup_ui()

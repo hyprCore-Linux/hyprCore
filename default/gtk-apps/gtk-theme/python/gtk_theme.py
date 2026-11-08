@@ -423,6 +423,66 @@ actionbar, .meld-actionbar {{
   box-shadow: none;
 }}
 headerbar {{ border-bottom: 1px solid {border}; }}
+menubar, popovermenubar, .menubar {{
+  border-bottom: 1px solid {border};
+}}
+/* Reveal menubar: no 1px underline strip, no accent “active” bar under items. */
+popovermenubar.gtk-reveal-menubar,
+.gtk-reveal-menubar {{
+  border: none;
+  border-bottom: none;
+  border-top: none;
+  box-shadow: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  padding: 0;
+  margin: 0;
+}}
+.gtk-reveal-menubar > *,
+.gtk-reveal-menubar menubutton,
+.gtk-reveal-menubar button,
+popovermenubar.gtk-reveal-menubar > menubutton,
+popovermenubar.gtk-reveal-menubar > button {{
+  border: none;
+  border-bottom: none;
+  border-top: none;
+  border-radius: 4px;
+  box-shadow: none;
+  outline: none;
+  background-image: none;
+}}
+.gtk-reveal-menubar menubutton:hover,
+.gtk-reveal-menubar menubutton:checked,
+.gtk-reveal-menubar menubutton:active,
+.gtk-reveal-menubar button:hover,
+.gtk-reveal-menubar button:checked,
+.gtk-reveal-menubar button:active,
+popovermenubar.gtk-reveal-menubar > menubutton:hover,
+popovermenubar.gtk-reveal-menubar > menubutton:checked,
+popovermenubar.gtk-reveal-menubar > menubutton:active {{
+  border: none;
+  border-bottom: none;
+  box-shadow: none;
+  outline: none;
+  background-image: none;
+  background-color: {hover};
+  color: {fg};
+}}
+button.gtk-reveal-menu-btn {{
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px 6px;
+}}
+button.gtk-reveal-menu-btn label.gtk-reveal-menu-glyph {{
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 0;
+  line-height: 1;
+  color: {fg};
+  padding: 0;
+  margin: 0;
+}}
 /* gtk-meld file path bars — Adwaita tints ActionBar with accent (reads purple). */
 actionbar > revealer > box,
 .meld-actionbar > revealer > box {{
@@ -816,7 +876,7 @@ def select_theme(
 
 
 def sync_desktop_theme(profile: Optional[Profile] = None) -> bool:
-    """Force-reset hyprbars + hyprtabs + Waybar / mako / fuzzel / system GTK dialog colors."""
+    """Force-reset hyprtabs + Waybar / mako / fuzzel / system GTK dialog colors."""
     profile = profile or load_profile()
     sync_hyprbars(profile)
     sync_hyprtabs(profile)
@@ -825,18 +885,9 @@ def sync_desktop_theme(profile: Optional[Profile] = None) -> bool:
 
 
 def sync_hyprbars(profile: Optional[Profile] = None) -> bool:
-    """Rewrite hyprbars colors to match the GTK theme profile (best-effort).
-
-    Bar / button fill use the elevated surface color (same idea as GTK
-    headerbars). Title and glyphs use the profile foreground.
-    """
+    """Hyprbars is not used. Older callers still refresh hyprtabs from here."""
     profile = profile or load_profile()
-    ok = sync_hyprbars_colors(
-        profile.surface_hex(), profile.foreground, chrome=profile.chrome
-    )
-    # Keep bottom tabs in the same palette whenever hyprbars is synced.
-    sync_hyprtabs(profile)
-    return ok
+    return sync_hyprtabs(profile)
 
 
 def sync_hyprtabs(profile: Optional[Profile] = None) -> bool:
@@ -958,129 +1009,14 @@ def _rewrite_hyprtabs_assigns(text: str, assigns: dict[str, str]) -> str:
 
 
 def sync_hyprbars_colors(
-    bar_hex: str, text_hex: str, chrome: Optional[WindowChrome] = None
+    bar_hex: str, text_hex: str, chrome: Optional["WindowChrome"] = None
 ) -> bool:
-    ch = chrome or WindowChrome()
-    b0, b1 = _chrome_bar_stops(ch, bar_hex, text_hex)
-    i0, i1 = _chrome_bar_inactive_stops(ch, bar_hex)
-    bar_rgb = _hex_to_hypr_rgb(b0)
-    bar2_rgb = _hex_to_hypr_rgb(b1)
-    ibar_rgb = _hex_to_hypr_rgb(i0)
-    ibar2_rgb = _hex_to_hypr_rgb(i1)
-    text_rgb = _hex_to_hypr_rgb(text_hex)
-    if not bar_rgb or not bar2_rgb or not ibar_rgb or not ibar2_rgb or not text_rgb:
-        return False
-    bar_rgba = f"rgba({bar_rgb[4:10]}ff)"
-    bar2_rgba = f"rgba({bar2_rgb[4:10]}ff)"
-    ibar_rgba = f"rgba({ibar_rgb[4:10]}ff)"
-    ibar2_rgba = f"rgba({ibar2_rgb[4:10]}ff)"
-    direction = "rtl" if ch.gradient == "rtl" else "ltr"
-    if ch.button_kit == "nerd":
-        _ensure_symbols_nerd_font()
-
-    path = _hyprland_conf_path()
-    if path is not None and path.is_file():
-        try:
-            original = path.read_text(encoding="utf-8")
-        except OSError:
-            original = None
-        if original is not None:
-            out = original
-            out = _replace_hypr_assign(out, "bar_color", bar_rgba)
-            out = _replace_or_insert_hypr_assign(out, "bar_color2", bar2_rgba, "bar_color")
-            out = _replace_or_insert_hypr_assign(
-                out, "bar_color_inactive", ibar_rgba, "bar_color2"
-            )
-            out = _replace_or_insert_hypr_assign(
-                out, "bar_color_inactive2", ibar2_rgba, "bar_color_inactive"
-            )
-            out = _replace_or_insert_hypr_assign(
-                out, "bar_gradient", direction, "bar_color_inactive2"
-            )
-            out = _replace_hypr_assign(out, "col.text", text_rgb)
-            out = _replace_hypr_assign(out, "inactive_button_color", ibar_rgb)
-            out = _replace_hypr_assign(out, "bar_text_font", _chrome_bar_font(ch))
-            out = _rewrite_hyprbars_buttons(out, bar_rgb, text_rgb, ch)
-            if out != original:
-                try:
-                    path.write_text(out, encoding="utf-8")
-                except OSError:
-                    pass
-
-    if not _theme_session_safe():
-        if ch.button_kit == "nerd":
-            _ensure_symbols_nerd_font()
-        _hyprctl_keyword("plugin:hyprbars:bar_color", bar_rgba)
-        _hyprctl_keyword("plugin:hyprbars:col.text", text_rgb)
-        _hyprctl_keyword("plugin:hyprbars:inactive_button_color", ibar_rgb)
-        _hyprctl_keyword("plugin:hyprbars:bar_text_font", _chrome_bar_font(ch))
-        _hyprctl_hyprbarsgradient(
-            f"{bar_rgba} {bar2_rgba} {ibar_rgba} {ibar2_rgba} {direction}"
-        )
-        _apply_hyprbars_button_keywords(bar_rgb, text_rgb, ch)
+    """Hyprbars is not used."""
     return True
 
 
 def _chrome_bar_font(chrome: WindowChrome) -> str:
     return "Symbols Nerd Font" if chrome.button_kit == "nerd" else "DejaVu Sans"
-
-
-def _ensure_symbols_nerd_font() -> None:
-    dests = [
-        Path.home() / ".local/share/fonts/SymbolsNerdFont-Regular.ttf",
-        Path("/usr/local/share/fonts/truetype/nerd-fonts/SymbolsNerdFont-Regular.ttf"),
-        Path("/usr/share/fonts/truetype/nerd-fonts/SymbolsNerdFont-Regular.ttf"),
-    ]
-    if any(p.is_file() for p in dests):
-        return
-    for src in dests[1:]:
-        if src.is_file():
-            dest = dests[0]
-            try:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dest)
-                subprocess.run(
-                    ["fc-cache", "-f", str(dest.parent)],
-                    check=False,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except OSError:
-                pass
-            return
-
-
-def _apply_hyprbars_button_keywords(
-    bar_rgb: str, text_rgb: str, chrome: WindowChrome
-) -> None:
-    path = _hyprland_conf_path()
-    if path is not None and path.is_file():
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            text = ""
-        any_btn = False
-        for line in text.splitlines():
-            trimmed = line.lstrip()
-            if trimmed.startswith("hyprbars-button"):
-                value = trimmed.split("=", 1)[-1].strip() if "=" in trimmed else ""
-                if value:
-                    _hyprctl_keyword("plugin:hyprbars:hyprbars-button", value)
-                    any_btn = True
-        if any_btn:
-            return
-    size = str(chrome.button_size)
-    for icon, action in (
-        (chrome.close, "hyprctl dispatch closewindow activewindow"),
-        (chrome.maximize, "hyprctl dispatch fullscreen 1"),
-        # Decorative only — minimize / special:minimized was removed.
-        (chrome.minimize, "true"),
-    ):
-        _hyprctl_keyword(
-            "plugin:hyprbars:hyprbars-button",
-            f"{bar_rgb}, {size}, {icon}, {action}, {text_rgb}",
-        )
 
 
 def _hyprland_conf_path() -> Optional[Path]:
@@ -1168,49 +1104,6 @@ def _replace_or_insert_hypr_assign(text: str, key: str, value: str, after_key: s
     return "".join(out)
 
 
-def _rewrite_hyprbars_buttons(
-    text: str, bar_rgb: str, text_rgb: str, chrome: WindowChrome
-) -> str:
-    lines = text.splitlines(keepends=True)
-    out: list[str] = []
-    for line in lines:
-        bare = line.rstrip("\r\n")
-        nl = line[len(bare) :]
-        if bare.lstrip().startswith("hyprbars-button"):
-            out.append(
-                _rewrite_one_hyprbars_button(bare, bar_rgb, text_rgb, chrome) + (nl or "\n")
-            )
-        else:
-            out.append(line)
-    return "".join(out)
-
-
-def _rewrite_one_hyprbars_button(
-    line: str, bar_rgb: str, text_rgb: str, chrome: WindowChrome
-) -> str:
-    indent = line[: len(line) - len(line.lstrip())]
-    trimmed = line.lstrip()
-    if "=" not in trimmed:
-        return line
-    rest = trimmed.split("=", 1)[1].strip()
-    commas = [i for i, c in enumerate(rest) if c == ","]
-    if len(commas) < 3:
-        return line
-    after_icon = rest[commas[2] + 1 :].strip()
-    lower = after_icon.lower()
-    idx = max(lower.rfind(", rgb("), lower.rfind(",rgba("), lower.rfind(",rgb("))
-    action = after_icon[:idx].strip() if idx >= 0 else after_icon
-    act = action.lower()
-    if "killactive" in act or "closewindow" in act:
-        icon = chrome.close
-    elif "fullscreen" in act:
-        icon = chrome.maximize
-    else:
-        icon = chrome.minimize
-    size = str(chrome.button_size)
-    return f"{indent}hyprbars-button = {bar_rgb}, {size}, {icon}, {action}, {text_rgb}"
-
-
 def _hypr_env() -> dict[str, str]:
     env = os.environ.copy()
     if env.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -1246,41 +1139,6 @@ def _hyprctl_keyword(key: str, value: str) -> None:
         )
     except Exception:
         pass
-
-
-def _hyprctl_dispatch(name: str, args: str) -> None:
-    if not shutil.which("hyprctl"):
-        return
-    try:
-        subprocess.run(
-            ["hyprctl", "dispatch", name, args],
-            env=_hypr_env(),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=5,
-        )
-    except Exception:
-        pass
-
-
-def _hyprctl_hyprbarsgradient(args: str) -> None:
-    if not shutil.which("hyprctl"):
-        return
-    try:
-        subprocess.run(
-            ["hyprctl", "hyprbarsfill", args],
-            env=_hypr_env(),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=5,
-        )
-    except Exception:
-        pass
-    _hyprctl_dispatch("hyprbarsgradient", args)
 
 
 def _theme_session_safe() -> bool:
@@ -2828,22 +2686,8 @@ windowcontrols button {
 
 
 def hyprbars_active() -> bool:
-    """True when the Hyprland hyprbars plugin is loaded."""
-    if not shutil.which("hyprctl"):
-        return False
-    try:
-        out = subprocess.run(
-            ["hyprctl", "plugin", "list"],
-            env=_hypr_env(),
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-    except Exception:
-        return False
-    return "plugin hyprbars" in (out.stdout or "").lower()
+    """Hyprbars is not part of this desktop."""
+    return False
 
 
 def headerbar_show_title_buttons() -> bool:
@@ -3035,7 +2879,7 @@ def install_about_action(
 
 
 def build_profile_only_menu(action_name: str = "win.theme"):
-    """Flat Profile section for a hamburger MenuButton that only offers themes."""
+    """Hierarchical Profile | Help menu for the reveal menubar."""
     import gi
 
     gi.require_version("Gtk", "4.0")
@@ -3058,12 +2902,154 @@ def build_profile_only_menu(action_name: str = "win.theme"):
         )
         profiles.append_item(item)
     profiles.append("Custom…", OPEN_THEME_EDITOR_MENU_ACTION)
+
     menu = Gio.Menu()
-    menu.append_section("Profile", profiles)
-    about = Gio.Menu()
-    about.append("About", ABOUT_MENU_ACTION)
-    menu.append_section(None, about)
+    profile_item = Gio.MenuItem.new("Profile", None)
+    profile_item.set_submenu(profiles)
+    menu.append_item(profile_item)
+
+    help_menu = Gio.Menu()
+    help_menu.append("About", ABOUT_MENU_ACTION)
+    help_item = Gio.MenuItem.new("Help", None)
+    help_item.set_submenu(help_menu)
+    menu.append_item(help_item)
     return menu
+
+
+def install_reveal_menubar(window, headerbar, title: str, menu_model):
+    """Left-aligned title + hamburger that reveals a horizontal PopoverMenuBar.
+
+    Returns ``(title_label, hamburger, menubar)``. Clicking the hamburger shows
+    File/Edit/… along the header; clicking elsewhere, Escape, or activating a
+    command hides it again.
+    """
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    from gi.repository import Gdk, GLib, Gtk, Pango
+
+    prepare_headerbar(headerbar)
+
+    title_label = Gtk.Label(label=title)
+    title_label.add_css_class("title")
+    title_label.set_halign(Gtk.Align.START)
+    title_label.set_xalign(0.0)
+    title_label.set_ellipsize(Pango.EllipsizeMode.END)
+
+    # ☰ glyph — Papirus maps open-menu-symbolic to vertical dots.
+    hamburger = Gtk.ToggleButton()
+    hamburger.set_tooltip_text("Menu")
+    hamburger.add_css_class("flat")
+    hamburger.add_css_class("gtk-reveal-menu-btn")
+    hamburger.set_halign(Gtk.Align.START)
+    hamburger.set_valign(Gtk.Align.CENTER)
+    menu_glyph = Gtk.Label(label="☰")
+    menu_glyph.add_css_class("gtk-reveal-menu-glyph")
+    hamburger.set_child(menu_glyph)
+
+    title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    title_box.add_css_class("gtk-reveal-title")
+    title_box.set_halign(Gtk.Align.START)
+    title_box.set_valign(Gtk.Align.CENTER)
+    title_box.append(title_label)
+    title_box.append(hamburger)
+
+    menubar = Gtk.PopoverMenuBar.new_from_model(menu_model)
+    menubar.add_css_class("gtk-reveal-menubar")
+    menubar.set_halign(Gtk.Align.START)
+    menubar.set_valign(Gtk.Align.CENTER)
+    menubar.set_visible(False)
+
+    try:
+        headerbar.set_title_widget(None)
+    except Exception:
+        pass
+    # Prefer packing at the start (Gtk.HeaderBar / Adw.HeaderBar).
+    if hasattr(headerbar, "pack_start"):
+        headerbar.pack_start(title_box)
+        headerbar.pack_start(menubar)
+    else:
+        headerbar.pack_start(title_box)  # type: ignore[attr-defined]
+
+    def _on_toggled(btn):
+        show = btn.get_active()
+        menubar.set_visible(show)
+        if show:
+            menubar.grab_focus()
+
+    hamburger.connect("toggled", _on_toggled)
+
+    def _menubar_has_open_popover() -> bool:
+        child = menubar.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.MenuButton):
+                pop = child.get_popover()
+                if pop is not None and pop.get_visible():
+                    return True
+            child = child.get_next_sibling()
+        return False
+
+    def _wire_popover_autohide():
+        child = menubar.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.MenuButton):
+                pop = child.get_popover()
+                if pop is not None and "gtk-reveal-hooked" not in (
+                    pop.get_css_classes() or []
+                ):
+                    pop.add_css_class("gtk-reveal-hooked")
+
+                    def _on_closed(_p, ham=hamburger):
+                        def _later():
+                            if not ham.get_active():
+                                return False
+                            if _menubar_has_open_popover():
+                                return False
+                            ham.set_active(False)
+                            return False
+
+                        GLib.timeout_add(60, _later)
+
+                    pop.connect("closed", _on_closed)
+            child = child.get_next_sibling()
+
+    menubar.connect("realize", lambda *_: _wire_popover_autohide())
+    menubar.connect("map", lambda *_: _wire_popover_autohide())
+
+    key = Gtk.EventControllerKey()
+    key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+    def _on_key(_c, keyval, _code, _state):
+        if keyval == Gdk.KEY_Escape and hamburger.get_active():
+            hamburger.set_active(False)
+            return True
+        return False
+
+    key.connect("key-pressed", _on_key)
+    window.add_controller(key)
+
+    click = Gtk.GestureClick()
+    click.set_button(1)
+    click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+    def _on_pressed(_g, _n, x, y):
+        if not hamburger.get_active():
+            return
+        target = window.pick(x, y, Gtk.PickFlags.DEFAULT)
+        if target is None:
+            hamburger.set_active(False)
+            return
+        w = target
+        while w is not None:
+            if w in (title_box, menubar, hamburger, title_label):
+                return
+            w = w.get_parent()
+        hamburger.set_active(False)
+
+    click.connect("pressed", _on_pressed)
+    window.add_controller(click)
+
+    return title_label, hamburger, menubar
 
 def install_profile_action(window, action_name: str = "theme"):
     """Stateful string action that selects a suite profile."""
@@ -3137,7 +3123,7 @@ def attach_profile_menu(
     about_comments: str = "",
     about_version: str = "0.1.0",
 ):
-    """Apply chrome and add a hamburger Profile (+ About) menu to the header bar."""
+    """Apply chrome and add a left title + hamburger reveal menubar (Profile | Help)."""
     import gi
 
     gi.require_version("Gtk", "4.0")
@@ -3158,7 +3144,6 @@ def attach_profile_menu(
                 headerbar = None
     if headerbar is None:
         raise ValueError("No HeaderBar available; pass headerbar=...")
-    prepare_headerbar(headerbar)
 
     action = install_profile_action(window, "theme")
     install_open_theme_editor_action(window)
@@ -3171,11 +3156,21 @@ def attach_profile_menu(
     )
     menu = build_profile_only_menu("win.theme")
 
-    button = Gtk.MenuButton()
-    button.set_icon_name("open-menu-symbolic")
-    button.set_tooltip_text("Menu")
-    button.set_menu_model(menu)
-    headerbar.pack_end(button)
+    # Prefer an existing title widget's text, then about_name / window title.
+    existing_title = None
+    try:
+        tw = headerbar.get_title_widget()
+        if isinstance(tw, Gtk.Label):
+            existing_title = tw.get_text() or None
+    except Exception:
+        pass
+    title_text = existing_title or program_name
+
+    title_label, _hamburger, _menubar = install_reveal_menubar(
+        window, headerbar, title_text, menu
+    )
+    # Keep a reference so callers can update the left title.
+    window._gtk_theme_title_label = title_label  # type: ignore[attr-defined]
 
     def _sync(profile: Profile) -> None:
         action.set_state(GLib.Variant.new_string(profile.id))

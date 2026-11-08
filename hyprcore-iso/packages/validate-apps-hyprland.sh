@@ -121,10 +121,7 @@ _check "hyprcore-x11-app" "$OVERLAY/usr/local/bin/hyprcore-x11-app"
 _check "hypr-settings" "$OVERLAY/usr/local/bin/hypr-settings"
 _check "hypr-settings desktop" "$OVERLAY/usr/share/applications/hypr-settings.desktop"
 _check "hypr-settings package tree" "$BUILD_ROOT/default/hypr-settings/hyprcore-install.sh"
-_check "hyprcore-ensure-hyprbars" "$OVERLAY/usr/local/bin/hyprcore-ensure-hyprbars"
-_check "hyprframes example.png" "$OVERLAY/usr/share/hyprcore/hyprframes/example.png"
-_check "hyprframes system conf" "$OVERLAY/usr/share/hyprcore/hyprframes/hyprframes.conf"
-_check "hyprframes user conf (default configs)" "$BUILD_ROOT/default/configs/hypr/hyprframes.conf"
+_check "hyprcore-ensure-hyprtabs" "$OVERLAY/usr/local/bin/hyprcore-ensure-hyprtabs"
 _check "hyprland.conf (default configs)" "$BUILD_ROOT/default/configs/hypr/hyprland.conf"
 _check "waybar config (default configs)" "$BUILD_ROOT/default/configs/waybar/config"
 _check "hyprcore-waybar-click" "$OVERLAY/usr/local/bin/hyprcore-waybar-click"
@@ -614,18 +611,8 @@ if [[ -d "$_pers_hypr" ]]; then
 fi
 
 _def_hypr="$BUILD_ROOT/default/configs/hypr/hyprland.conf"
-if grep -q 'plugin = /usr/local/lib/hyprland/plugins/libhyprframes.so' "$_def_hypr" 2>/dev/null \
-	&& grep -q 'hyprframes.conf' "$_def_hypr" 2>/dev/null \
-	&& grep -q 'hyprframes' "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprspace.hook.chroot" 2>/dev/null \
-	&& [[ -f "$BUILD_ROOT/../Packages/hyprframes/CMakeLists.txt" ]]; then
-	echo "  OK  hyprframes staged for ISO (plugin= + hook 998 + sibling source)"
-	_ok=$((_ok + 1))
-else
-	echo "  MISSING  hyprframes ISO wiring (plugin=, hook 998, or ../Packages/hyprframes)"
-	_fail=$((_fail + 1))
-fi
 if grep -q 'hyprtabs' "$_def_hypr" 2>/dev/null \
-	&& grep -q 'hyprtabs' "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprspace.hook.chroot" 2>/dev/null \
+	&& grep -q 'hyprtabs' "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprtabs.hook.chroot" 2>/dev/null \
 	&& [[ -f "$BUILD_ROOT/../Packages/hyprtabs/Makefile" ]]; then
 	echo "  OK  hyprtabs staged for ISO (hyprland.conf + hook 998 + sibling source)"
 	_ok=$((_ok + 1))
@@ -699,8 +686,7 @@ _smoke_run "Layer B: gtk-term" "gtk-term --help" 2
 _smoke_run "Layer B: gtk-image" "gtk-image --help" 2
 _smoke_run "Layer B: gtk-video" "gtk-video --help" 2
 _smoke_run "Layer B: gtk-calc" "gtk-calc --help" 2
-_smoke_run "hyprbars helper" "test -x /usr/local/bin/hyprcore-ensure-hyprbars"
-_smoke_run "hyprframes overlay png" "test -f /usr/share/hyprcore/hyprframes/example.png -o -f ${OVERLAY}/usr/share/hyprcore/hyprframes/example.png"
+_smoke_run "hyprtabs helper" "test -x /usr/local/bin/hyprcore-ensure-hyprtabs"
 _smoke_run "native: fuzzel" "fuzzel --version"
 _smoke_run "hypr-settings" "test -x /usr/local/bin/hypr-settings"
 
