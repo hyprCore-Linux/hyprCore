@@ -46,9 +46,9 @@ Associated infrastructure (also on the ISO):
 - **Fuzzel** — Wayland-native application menu
 - **Mako** — minimalist notification daemon
 
-### Toolkit integration (`hyprland.conf`)
+### Toolkit integration (`hyprland.lua`)
 
-GNOME/GTK apps assume GNOME Shell. Pass environment flags so themes and dark mode behave on Hyprland. Append to `~/.config/hypr/hyprland.conf` (the ISO skel already ships equivalent settings):
+GNOME/GTK apps assume GNOME Shell. Pass environment flags so themes and dark mode behave on Hyprland. Append to `~/.config/hypr/hyprland.lua` (the ISO skel already ships equivalent settings):
 
 ```conf
 # --- Toolkit & Portal Tweaks ---
@@ -85,7 +85,7 @@ GRUB → Linux (trixie-backports kernel) → LightDM → hyprcore-hyprland → s
 | Display manager | **LightDM** + gtk greeter | Live ISO autologins as `live`; installed disk autologins into Hyprland |
 | Wayland compositor | **Hyprland 0.56.2** (snapshot on trixie) | Tiling WM; `start-hyprland` + `hyprland-guiutils` |
 | Session entry | `hyprcore-hyprland-session.sh` | Sets env, execs `start-hyprland` |
-| Session startup | `hyprcore-hyprland-session-start.sh` | `exec-once` from `hyprland.conf` |
+| Session startup | `hyprcore-hyprland-session-start.sh` | `exec-once` from `hyprland.lua` |
 | Wallpaper | **hyprpaper** | hyprCore background via `hyprpaper.conf` |
 
 ### Started automatically at login
@@ -121,7 +121,7 @@ These daemons/apps are launched by `hyprcore-hyprland-session-start.sh` (or Hypr
 
 ### Session environment (Layer B — one block, all GTK/Qt apps)
 
-Applied in `hyprland.conf`, `hyprcore-hyprland-session-env.sh`, and `dbus-update-activation-environment`:
+Applied in `hyprland.lua`, `hyprcore-hyprland-session-env.sh`, and `dbus-update-activation-environment`:
 
 | Variable / service | Purpose |
 |--------------------|---------|
@@ -300,7 +300,7 @@ The full install-list does **not** need per-app Hyprland rules. Compatibility is
 | Layer | Scope | What the ISO provides |
 |-------|--------|------------------------|
 | **A — No GUI** | servers, CLI, libs, Python, plugins, themes | Nothing — not desktop windows |
-| **B — Session defaults** | GTK/Qt apps | One env block in `hyprland.conf` + `hyprcore-hyprland-session-env.sh` |
+| **B — Session defaults** | GTK/Qt apps | One env block in `hyprland.lua` + `hyprcore-hyprland-session-env.sh` |
 | **C — Category wrappers** | audacity, blender, … | Shared `hyprcore-x11-app` + desktop overrides |
 | **D — Hardware / VM** | GPU-heavy apps | Document VirtualBox 3D accel; not fixable by config alone |
 
@@ -659,10 +659,10 @@ Override output dir: `HYPRCORE_BUILD_ROOT=...`
 
 Keep these consistent together:
 
-- `etc/skel/.config/hypr/hyprland.conf` ↔ `hyprcore-hyprland-session-start.sh` ↔ `hyprcore-hyprland-session-env.sh` ↔ `hyprcore-hyprland.desktop`
+- `etc/skel/.config/hypr/hyprland.lua` ↔ `hyprcore-hyprland-session-start.sh` ↔ `hyprcore-hyprland-session-env.sh` ↔ `hyprcore-hyprland.desktop`
 - LightDM drop-ins ↔ `HYPRCORE_DESKTOP_SESSION=hyprcore-hyprland` in metadata
 - Waybar/Fuzzel/Mako: `default/configs/{waybar,fuzzel,mako}` ↔ overlay `hyprcore-waybar-click` / `hyprcore_quick_settings.py` / `hyprcore-session-action` ↔ packages in `live` section
-- `hypr-settings` / keybinds in `hyprland.conf` ↔ tools actually in live or desktop lists
+- `hypr-settings` / keybinds in `hyprland.lua` ↔ tools actually in live or desktop lists
 - Layer C wrappers: `audacity.desktop` / `blender.desktop` ↔ `hyprcore-x11-app`
 
 #### Install vs live divergence

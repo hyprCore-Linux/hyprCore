@@ -5,7 +5,7 @@ Hypr-settings monitor daemon.
 Listens to Hyprland events and automatically applies the saved display profile
 for the current set of connected monitors.
 
-To enable, add to ~/.config/hypr/hyprland.conf:
+To enable, add to ~/.config/hypr/hyprland.lua:
     exec-once = python3 /path/to/hypr-settings/monitor_daemon.py
 
 Or as a systemd user service — see README.

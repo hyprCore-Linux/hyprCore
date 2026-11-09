@@ -156,7 +156,7 @@ python3-pip # pip for gtk-neuron cursor-sdk (optional repair)
 
 # --- desktop ---
 # Hyprland session as shipped (keybinds + settings panel + hyprpm plugins)
-wf-recorder # Screen recording (Ctrl+Alt+Shift+R in hyprland.conf)
+wf-recorder # Screen recording (Ctrl+Alt+Shift+R in hyprland.lua)
 kanshi # Monitor hot-plug profiles for Wayland compositors
 cmake # Build the hyprtabs plugin
 g++ # C++ compiler for hyprpm plugins

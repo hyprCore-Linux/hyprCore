@@ -381,7 +381,7 @@ PY
 				_info "  skip stub overlay configs/$base"
 				continue
 			fi
-			# Personalize overlay: deep-merge dirs so stock siblings (e.g. hyprland.conf) remain
+			# Personalize overlay: deep-merge dirs so stock siblings (e.g. hyprland.lua) remain
 			if [[ "$skip_stubs" -eq 1 && -d "$item" && ! -L "$item" && -d "$dest/$base" ]]; then
 				_deep_merge_dir "$item" "$dest/$base"
 				_info "  deep-merge configs/$base"

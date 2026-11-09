@@ -122,7 +122,7 @@ _check "hypr-settings" "$OVERLAY/usr/local/bin/hypr-settings"
 _check "hypr-settings desktop" "$OVERLAY/usr/share/applications/hypr-settings.desktop"
 _check "hypr-settings package tree" "$BUILD_ROOT/default/hypr-settings/hyprcore-install.sh"
 _check "hyprcore-ensure-hyprtabs" "$OVERLAY/usr/local/bin/hyprcore-ensure-hyprtabs"
-_check "hyprland.conf (default configs)" "$BUILD_ROOT/default/configs/hypr/hyprland.conf"
+_check "hyprland.lua (default configs)" "$BUILD_ROOT/default/configs/hypr/hyprland.lua"
 _check "waybar config (default configs)" "$BUILD_ROOT/default/configs/waybar/config"
 _check "hyprcore-waybar-click" "$OVERLAY/usr/local/bin/hyprcore-waybar-click"
 _check "hyprcore-session-action" "$OVERLAY/usr/local/bin/hyprcore-session-action"
@@ -214,11 +214,11 @@ fi
 if grep -q 'GTK_ICON_THEME=Papirus-Dark' "$OVERLAY/usr/share/hyprcore/hyprcore-hyprland-session-env.sh" 2>/dev/null \
 	&& grep -q "gtk-icon-theme-name=Papirus-Dark" "$BUILD_ROOT/default/configs/gtk-3.0/settings.ini" 2>/dev/null \
 	&& grep -q "icon-theme='Papirus-Dark'" "$OVERLAY/etc/dconf/db/local.d/01-hyprcore-gtk4-dark" 2>/dev/null \
-	&& grep -q 'env = GTK_ICON_THEME,Papirus-Dark' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
+	&& grep -q 'hl.env("GTK_ICON_THEME", "Papirus-Dark")' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
 	echo "  OK  Papirus-Dark toolbar icons (session env / GTK3 / dconf / Hyprland)"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  Papirus-Dark in session env, gtk-3.0 settings, dconf, or hyprland.conf"
+	echo "  MISSING  Papirus-Dark in session env, gtk-3.0 settings, dconf, or hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 
@@ -237,7 +237,7 @@ fi
 if grep -q 'def _sync_gtk_term_colors' "$BUILD_ROOT/default/gtk-apps/gtk-theme/python/gtk_theme.py" 2>/dev/null \
 	&& grep -q '\[colors\]' "$BUILD_ROOT/default/configs/gtk-apps/gtk-term/config.toml" 2>/dev/null \
 	&& grep -q 'progress-color=#' "$BUILD_ROOT/default/configs/mako/config" 2>/dev/null \
-	&& grep -q 'background_color = rgb(' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
+	&& grep -q 'background_color = "rgb(' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
 	echo "  OK  gtk-themes Base syncs gtk-term / mako / Hypr workspace background"
 	_ok=$((_ok + 1))
 else
@@ -247,7 +247,7 @@ fi
 
 if grep -q 'def sync_hyprtabs' "$BUILD_ROOT/default/gtk-apps/gtk-theme/python/gtk_theme.py" 2>/dev/null \
 	&& grep -q 'sync_hyprtabs' "$BUILD_ROOT/default/gtk-apps/gtk-theme/python/__init__.py" 2>/dev/null \
-	&& grep -q 'tab_active_color' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null \
+	&& grep -q 'tab_active_color' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
 	&& grep -q 'def pin_tabs_after_click' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null \
 	&& grep -q 'def is_tabs_dialog' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null \
 	&& grep -q 'def is_tabs_overlay' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null \
@@ -371,7 +371,7 @@ else
 	_fail=$((_fail + 1))
 fi
 
-if grep -q 'match:namespace hyprcore-settings, blur off' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null \
+if grep -q 'namespace = "hyprcore-settings"' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
 	&& grep -q 'alpha=0.86' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null \
 	&& grep -q 'set_namespace(win, "hyprcore-settings")' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null; then
 	echo "  OK  Settings window dark glass, no Hyprland blur"
@@ -415,8 +415,8 @@ fi
 if grep -q 'def place_layer_at' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null \
 	&& grep -q 'if size.get("placed") == placed' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null \
 	&& grep -q 'GtkLayerShell.set_namespace(win, "hyprcore-settings")' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null \
-	&& grep -q 'animation slide top' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null \
-	&& grep -q 'hyprcore-settings, blur off' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
+	&& grep -q 'animation = "slide top"' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
+	&& grep -q 'blur = false' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
 	echo "  OK  settings panel slides from the top once, no re-animate on nav"
 	_ok=$((_ok + 1))
 else
@@ -424,7 +424,7 @@ else
 	_fail=$((_fail + 1))
 fi
 
-if grep -q 'hyprcore-screenshot' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null \
+if grep -q 'hyprcore-screenshot' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
 	&& grep -q 'gtk-image' "$OVERLAY/usr/local/bin/hyprcore-screenshot" 2>/dev/null; then
 	echo "  OK  Print Screen → hyprcore-screenshot → gtk-image"
 	_ok=$((_ok + 1))
@@ -451,19 +451,19 @@ else
 	_ok=$((_ok + 1))
 fi
 
-if grep -q 'hyprcore-window-switch' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
-	echo "  OK  hyprland.conf Alt+Tab → hyprcore-window-switch"
+if grep -q 'hyprcore-window-switch' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
+	echo "  OK  hyprland.lua Alt+Tab → hyprcore-window-switch"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  hyprcore-window-switch bind in hyprland.conf"
+	echo "  MISSING  hyprcore-window-switch bind in hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 
-if grep -qE 'alttab|hyprcore-ensure-alttab' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
-	echo "  FAIL  hyprland.conf still references alttab plugin"
+if grep -qE 'alttab|hyprcore-ensure-alttab' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
+	echo "  FAIL  hyprland.lua still references alttab plugin"
 	_fail=$((_fail + 1))
 else
-	echo "  OK  no alttab plugin in hyprland.conf"
+	echo "  OK  no alttab plugin in hyprland.lua"
 	_ok=$((_ok + 1))
 fi
 
@@ -479,19 +479,19 @@ else
 	_fail=$((_fail + 1))
 fi
 
-if grep -q 'bindr = SUPER, Super_L, exec, hyprcore-fuzzel' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
+if grep -q 'hyprcore-fuzzel"), { release = true })' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
 	echo "  OK  Super → hyprcore-fuzzel"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  Super fuzzel bind in hyprland.conf"
+	echo "  MISSING  Super fuzzel bind in hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 
-if grep -q 'hyprcore-launch gtk-term' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
-	echo "  OK  hyprland.conf binds gtk-term (hyprCore daily terminal)"
+if grep -q 'hyprcore-launch gtk-term' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
+	echo "  OK  hyprland.lua binds gtk-term (hyprCore daily terminal)"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  gtk-term bind in hyprland.conf"
+	echo "  MISSING  gtk-term bind in hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 
@@ -512,34 +512,34 @@ else
 	_ok=$((_ok + 1))
 fi
 
-if grep -q 'hyprcore-launch gtk-files' "$BUILD_ROOT/default/configs/hypr/hyprland.conf" 2>/dev/null; then
-	echo "  OK  hyprland.conf binds gtk-files"
+if grep -q 'hyprcore-launch gtk-files' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null; then
+	echo "  OK  hyprland.lua binds gtk-files"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  gtk-files bind in hyprland.conf"
+	echo "  MISSING  gtk-files bind in hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 
 _pers_hypr="$BUILD_ROOT/personalize/configs/hypr"
 if [[ -d "$_pers_hypr" ]]; then
 	_check "window-manager.py (personalize)" "$_pers_hypr/window-manager.py"
-	if grep -qE 'match:class \.\*, match:workspace m\[HDMI-A-1\], float on' "$_pers_hypr/binds-personal.conf" 2>/dev/null; then
+	if grep -qE 'match:class \.\*, match:workspace m\[HDMI-A-1\], float on' "$_pers_hypr/binds-personal.lua" 2>/dev/null; then
 		echo "  OK  personalize HDMI workspaces float (Ctrl+Super+Alt+2 slot)"
 		_ok=$((_ok + 1))
 	else
-		echo "  MISSING  HDMI float windowrule in personalize binds-personal.conf"
+		echo "  MISSING  HDMI float windowrule in personalize binds-personal.lua"
 		_fail=$((_fail + 1))
 	fi
 	if grep -q 'def tile_to' "$_pers_hypr/window-manager.py" 2>/dev/null \
 		&& grep -q 'settiled' "$_pers_hypr/window-manager.py" 2>/dev/null \
-		&& grep -qE 'window_manager dp-left' "$_pers_hypr/binds-personal.conf" 2>/dev/null; then
+		&& grep -qE 'window_manager dp-left' "$_pers_hypr/binds-personal.lua" 2>/dev/null; then
 		echo "  OK  personalize tiles onto DP-3/DP-4 (Ctrl+Super+Alt Left/Right)"
 		_ok=$((_ok + 1))
 	else
 		echo "  MISSING  DP portrait tiling (tile_to / dp-left) in personalize hypr"
 		_fail=$((_fail + 1))
 	fi
-	if grep -q 'gapsout:0 0 1080' "$_pers_hypr/workspaces.conf" 2>/dev/null; then
+	if grep -qE 'gapsout:0 0 1080|gaps_out.*1080' "$_pers_hypr/workspaces.lua" "$_pers_hypr/workspaces.conf" 2>/dev/null; then
 		echo "  FAIL  personalize still uses tiled HDMI top-half gapsout"
 		_fail=$((_fail + 1))
 	else
@@ -564,21 +564,21 @@ if [[ -d "$_pers_hypr" ]]; then
 	fi
 	if grep -q 'def is_photos_dialog' "$_pers_hypr/window-manager.py" 2>/dev/null \
 		&& grep -q 'is_photos_dialog(win) or is_dialog_like' "$_pers_hypr/window-manager.py" 2>/dev/null \
-		&& grep -qE 'match:modal true, center on' "$_pers_hypr/binds-personal.conf" 2>/dev/null; then
+		&& grep -qE 'match:modal true, center on' "$_pers_hypr/binds-personal.lua" 2>/dev/null; then
 		echo "  OK  personalize gtk-photos dialogs center (not photo grid)"
 		_ok=$((_ok + 1))
 	else
 		echo "  MISSING  gtk-photos dialog centering in personalize hypr"
 		_fail=$((_fail + 1))
 	fi
-	if grep -qE 'window-manager.py watch|\$window_manager watch' "$_pers_hypr/binds-personal.conf" 2>/dev/null; then
+	if grep -qE 'window-manager.py watch|\$window_manager watch' "$_pers_hypr/binds-personal.lua" 2>/dev/null; then
 		echo "  OK  personalize exec-once window-manager watch"
 		_ok=$((_ok + 1))
 	else
-		echo "  MISSING  window-manager watch in binds-personal.conf"
+		echo "  MISSING  window-manager watch in binds-personal.lua"
 		_fail=$((_fail + 1))
 	fi
-	if grep -q 'overview-fuzzel' "$_pers_hypr/binds-personal.conf" 2>/dev/null \
+	if grep -q 'overview-fuzzel' "$_pers_hypr/binds-personal.lua" 2>/dev/null \
 		&& grep -q 'def overview_fuzzel' "$_pers_hypr/window-manager.py" 2>/dev/null \
 		&& grep -q 'def overview_adopt_window' "$_pers_hypr/window-manager.py" 2>/dev/null; then
 		echo "  OK  personalize Super overview types into fuzzel and adopts new windows"
@@ -587,21 +587,21 @@ if [[ -d "$_pers_hypr" ]]; then
 		echo "  MISSING  overview-fuzzel / overview_adopt_window in personalize hypr"
 		_fail=$((_fail + 1))
 	fi
-	if grep -q 'window-manager.py overview' "$_pers_hypr/hyprland.conf" 2>/dev/null; then
+	if grep -q 'window-manager.py overview' "$_pers_hypr/hyprland.lua" 2>/dev/null; then
 		echo "  OK  personalize Super → window-manager overview"
 		_ok=$((_ok + 1))
 	else
-		echo "  MISSING  Super overview bind in personalize hyprland.conf"
+		echo "  MISSING  Super overview bind in personalize hyprland.lua"
 		_fail=$((_fail + 1))
 	fi
-	if grep -q 'resize_on_border = true' "$_pers_hypr/binds-personal.conf" 2>/dev/null; then
+	if grep -q 'resize_on_border = true' "$_pers_hypr/binds-personal.lua" 2>/dev/null; then
 		echo "  OK  personalize resize_on_border (Chrome/float grab edge)"
 		_ok=$((_ok + 1))
 	else
-		echo "  MISSING  resize_on_border in personalize binds-personal.conf"
+		echo "  MISSING  resize_on_border in personalize binds-personal.lua"
 		_fail=$((_fail + 1))
 	fi
-	if grep -qE 'match:class \^\(google-chrome.*\), match:float true, border_size 0' "$_pers_hypr/binds-personal.conf" 2>/dev/null; then
+	if grep -qE 'match:class \^\(google-chrome.*\), match:float true, border_size 0' "$_pers_hypr/binds-personal.lua" 2>/dev/null; then
 		echo "  FAIL  personalize still strips border on all floating Chrome windows"
 		_fail=$((_fail + 1))
 	else
@@ -610,28 +610,28 @@ if [[ -d "$_pers_hypr" ]]; then
 	fi
 fi
 
-_def_hypr="$BUILD_ROOT/default/configs/hypr/hyprland.conf"
+_def_hypr="$BUILD_ROOT/default/configs/hypr/hyprland.lua"
 if grep -q 'hyprtabs' "$_def_hypr" 2>/dev/null \
 	&& grep -q 'hyprtabs' "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprtabs.hook.chroot" 2>/dev/null \
 	&& [[ -f "$BUILD_ROOT/../Packages/hyprtabs/Makefile" ]]; then
-	echo "  OK  hyprtabs staged for ISO (hyprland.conf + hook 998 + sibling source)"
+	echo "  OK  hyprtabs staged for ISO (hyprland.lua + hook 998 + sibling source)"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  hyprtabs ISO wiring (hyprland.conf, hook 998, or ../Packages/hyprtabs)"
+	echo "  MISSING  hyprtabs ISO wiring (hyprland.lua, hook 998, or ../Packages/hyprtabs)"
 	_fail=$((_fail + 1))
 fi
-if grep -q 'match:xdg_tag popup, border_size 0' "$_def_hypr" 2>/dev/null; then
-	echo "  OK  default hyprland.conf strips popup decorations via xdg_tag"
+if grep -qE 'xdg_tag = "popup"|match:xdg_tag popup, border_size 0' "$_def_hypr" 2>/dev/null; then
+	echo "  OK  default hyprland.lua strips popup decorations via xdg_tag"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  xdg_tag popup border_size 0 in default hyprland.conf"
+	echo "  MISSING  xdg_tag popup border_size 0 in default hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 if grep -qE 'match:class \^\(google-chrome.*\), match:float true, border_size 0' "$_def_hypr" 2>/dev/null; then
-	echo "  FAIL  default hyprland.conf still strips border on all floating Chrome windows"
+	echo "  FAIL  default hyprland.lua still strips border on all floating Chrome windows"
 	_fail=$((_fail + 1))
 else
-	echo "  OK  default hyprland.conf does not strip all floating Chrome borders"
+	echo "  OK  default hyprland.lua does not strip all floating Chrome borders"
 	_ok=$((_ok + 1))
 fi
 

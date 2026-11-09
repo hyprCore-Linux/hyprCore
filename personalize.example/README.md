@@ -79,7 +79,7 @@ Personalize README stubs do **not** wipe default trees (merge skips stub-only di
 | `.icons/default` | `icons/default/` |
 | `.config/xsettingsd` | `xsettingsd/` |
 
-Hyprland: stock `hyprland.conf` sources `./binds-personal.conf` — see
+Hyprland: stock `hyprland.lua` requires `binds-personal` — see
 [`configs/hypr/README.md`](configs/hypr/README.md).
 
 ### Default mapping (hyprCore) — system (`/etc`)

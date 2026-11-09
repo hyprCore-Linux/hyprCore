@@ -48,7 +48,7 @@ class SectionDef:
 
 
 def build_schema() -> list[SectionDef]:
-    hypr = "hypr/hyprland.conf"
+    hypr = "hypr/hyprland.lua"
     # Color swatches live in GTK Theme Editor (Settings → Themes), not here.
     return [
         SectionDef(
@@ -72,11 +72,11 @@ def build_schema() -> list[SectionDef]:
                 FieldDef("panel_height", "Panel height", "int", hypr, "hypr", block=["plugin", "overview"], key="panelHeight", min_v=40, max_v=400),
             ],
             raw_files=[
-                "hypr/hyprland.conf",
-                "hypr/binds-personal.conf",
+                "hypr/hyprland.lua",
+                "hypr/binds-personal.lua",
                 "hypr/hyprpaper.conf",
-                "hypr/monitors.conf",
-                "hypr/workspaces.conf",
+                "hypr/monitors.lua",
+                "hypr/workspaces.lua",
             ],
         ),
         SectionDef(

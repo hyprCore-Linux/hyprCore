@@ -137,7 +137,7 @@ class ConfigStore:
     def scan_colors(self) -> list[colors_fmt.ColorHit]:
         hits: list[colors_fmt.ColorHit] = []
         color_files = [
-            "hypr/hyprland.conf",
+            "hypr/hyprland.lua",
             "waybar/style.css",
             "waybar/config",
             "fuzzel/fuzzel.ini",

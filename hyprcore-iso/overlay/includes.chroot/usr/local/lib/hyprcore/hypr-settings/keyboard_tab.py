@@ -16,7 +16,16 @@ from PySide6.QtWidgets import (
 
 from common import make_centered, separator
 
-HYPR_CONF = Path.home() / ".config/hypr/hyprland.conf"
+def _hyprland_config_path() -> Path | None:
+    for path in (
+        Path.home() / ".config/hypr/hyprland.lua",
+        Path.home() / "configs/hypr/hyprland.lua",
+        Path.home() / ".config/hypr/hyprland.conf",
+        Path.home() / "configs/hypr/hyprland.conf",
+    ):
+        if path.is_file():
+            return path
+    return None
 
 COMMON_LAYOUTS: list[tuple[str, str]] = [
     ("us", "English (US)"),
@@ -89,20 +98,37 @@ CAPS_OPTIONS: list[tuple[str, str]] = [
 
 def _read_input_keys(text: str) -> dict[str, str]:
     out = {"kb_layout": "us", "kb_variant": "", "kb_options": "", "kb_model": ""}
-    m = re.search(r"(?ms)^\s*input\s*\{(.*?)^\s*\}", text)
+    m = re.search(r"(?ms)^\s*input(?:\s*=\s*|\s*)\{(.*?)^\s*\}", text)
     if not m:
         return out
     block = m.group(1)
     for key in out:
         km = re.search(rf"(?m)^\s*{re.escape(key)}\s*=\s*(.*?)\s*$", block)
         if km:
-            out[key] = km.group(1).strip()
+            val = km.group(1).strip().rstrip(",")
+            if "--" in val:
+                val = val.split("--", 1)[0].rstrip()
+            if "#" in val:
+                val = val.split("#", 1)[0].rstrip()
+            val = val.strip().rstrip(",")
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in ("\"", "'"):
+                val = val[1:-1]
+            out[key] = val
     return out
 
 
 def _write_input_keys(text: str, values: dict[str, str]) -> str:
-    m = re.search(r"(?ms)^(\s*input\s*\{)(.*?)(^\s*\})", text)
+    m = re.search(r"(?ms)^(\s*input(?:\s*=\s*|\s*)\{)(.*?)(^\s*\})", text)
     if not m:
+        # Prefer Lua insert when the rest of the file is Lua.
+        if "hl.config" in text or "hl.env" in text:
+            lines = ["    input = {"]
+            for k, v in values.items():
+                if v and v not in ('""', "''"):
+                    lines.append(f"        {k} = {v},")
+            lines.append("    },")
+            # Best-effort: append inside trailing hl.config if present is hard; append block.
+            return text.rstrip() + "\n\n" + "\n".join(lines) + "\n"
         lines = ["input {"]
         for k, v in values.items():
             if v:
@@ -115,30 +141,42 @@ def _write_input_keys(text: str, values: dict[str, str]) -> str:
     for key, val in values.items():
         pat = re.compile(rf"(?m)^(\s*){re.escape(key)}\s*=\s*.*$")
         if pat.search(new_body):
-            if val:
+            if val and val not in ('""', "''"):
+                # Keep trailing comma if Lua table style used it.
                 new_body = pat.sub(rf"\1{key} = {val}", new_body, count=1)
+                # Ensure comma on Lua table entries
+                if " = {" in head or head.strip().startswith("input ="):
+                    new_body = re.sub(
+                        rf"(?m)^(\s*{re.escape(key)}\s*=\s*{re.escape(val)})\s*,?\s*$",
+                        rf"\1,",
+                        new_body,
+                        count=1,
+                    )
             else:
                 new_body = pat.sub("", new_body, count=1)
-        elif val:
-            new_body = new_body.rstrip("\n") + f"\n    {key} = {val}\n"
+        elif val and val not in ('""', "''"):
+            suffix = "," if (" = {" in head or head.strip().startswith("input =")) else ""
+            new_body = new_body.rstrip("\n") + f"\n    {key} = {val}{suffix}\n"
     new_body = re.sub(r"\n{3,}", "\n\n", new_body)
     return text[: m.start()] + head + new_body + tail + text[m.end() :]
 
 
 def load_keyboard_config() -> dict[str, str]:
-    if not HYPR_CONF.is_file():
+    path = _hyprland_config_path()
+    if path is None:
         return {"kb_layout": "us", "kb_variant": "", "kb_options": "", "kb_model": ""}
     try:
-        return _read_input_keys(HYPR_CONF.read_text(encoding="utf-8"))
+        return _read_input_keys(path.read_text(encoding="utf-8"))
     except OSError:
         return {"kb_layout": "us", "kb_variant": "", "kb_options": "", "kb_model": ""}
 
 
 def save_keyboard_config(values: dict[str, str]) -> tuple[bool, str]:
-    if not HYPR_CONF.is_file():
-        return False, f"Missing config: {HYPR_CONF}"
+    path = _hyprland_config_path()
+    if path is None:
+        return False, "Missing config: hyprland.lua"
     try:
-        text = HYPR_CONF.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
     except OSError as exc:
         return False, str(exc)
 
@@ -148,9 +186,13 @@ def save_keyboard_config(values: dict[str, str]) -> tuple[bool, str]:
         "kb_options": (values.get("kb_options") or "").strip(),
         "kb_model": (values.get("kb_model") or "").strip(),
     }
-    new_text = _write_input_keys(text, cleaned)
+    # Quote string values for Lua configs.
+    write_vals = cleaned
+    if path.suffix == ".lua":
+        write_vals = {k: (f'"{v}"' if v else '""') for k, v in cleaned.items()}
+    new_text = _write_input_keys(text, write_vals)
     try:
-        HYPR_CONF.write_text(new_text, encoding="utf-8")
+        path.write_text(new_text, encoding="utf-8")
     except OSError as exc:
         return False, str(exc)
 
@@ -229,7 +271,7 @@ class KeyboardTab(QWidget):
         root.addWidget(title)
 
         intro = QLabel(
-            "Choose layouts for Hyprland. Changes write to hyprland.conf and apply immediately."
+            "Choose layouts for Hyprland. Changes write to hyprland.lua and apply immediately."
         )
         intro.setObjectName("statusLabel")
         intro.setWordWrap(True)

@@ -59,8 +59,6 @@ OPEN_THEME_EDITOR_MENU_ACTION = "win.open-theme-editor"
 
 ABOUT_ACTION = "about"
 ABOUT_MENU_ACTION = "win.about"
-SUITE_WEBSITE = "https://github.com/hyprCoreOS/GTK-Apps"
-SUITE_WEBSITE_LABEL = "github.com/hyprCoreOS/GTK-Apps"
 SUITE_AUTHOR = "Created by Kevin Hinds"
 # Full GTK3/GTK4 theme under ~/.themes (THEME priority). Rewritten on profile change.
 SHELL_GTK_THEME = "hyprcore"
@@ -425,6 +423,75 @@ actionbar, .meld-actionbar {{
   box-shadow: none;
 }}
 headerbar {{ border-bottom: 1px solid {border}; }}
+menubar, popovermenubar, .menubar {{
+  border-bottom: 1px solid {border};
+}}
+/* Reveal menubar: no underline. Vertical-homogeneous stack stops header jump. */
+.gtk-reveal-controls {{
+  margin-start: 4px;
+  min-height: 34px;
+}}
+popovermenubar.gtk-reveal-menubar,
+.gtk-reveal-menubar {{
+  border: none;
+  border-bottom: none;
+  border-top: none;
+  box-shadow: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  padding: 0;
+  margin: 0;
+  min-height: 34px;
+}}
+.gtk-reveal-menubar > *,
+.gtk-reveal-menubar menubutton,
+.gtk-reveal-menubar button,
+popovermenubar.gtk-reveal-menubar > menubutton,
+popovermenubar.gtk-reveal-menubar > button {{
+  border: none;
+  border-bottom: none;
+  border-top: none;
+  border-radius: 4px;
+  box-shadow: none;
+  outline: none;
+  background-image: none;
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}}
+.gtk-reveal-menubar menubutton:hover,
+.gtk-reveal-menubar menubutton:checked,
+.gtk-reveal-menubar menubutton:active,
+.gtk-reveal-menubar button:hover,
+.gtk-reveal-menubar button:checked,
+.gtk-reveal-menubar button:active,
+popovermenubar.gtk-reveal-menubar > menubutton:hover,
+popovermenubar.gtk-reveal-menubar > menubutton:checked,
+popovermenubar.gtk-reveal-menubar > menubutton:active {{
+  border: none;
+  border-bottom: none;
+  box-shadow: none;
+  outline: none;
+  background-image: none;
+  background-color: {hover};
+  color: {fg};
+}}
+/* CSS-drawn ellipsis ··· — no font / tofu dependency. */
+button.gtk-reveal-menu-btn {{
+  min-width: 28px;
+  min-height: 34px;
+  padding: 4px 6px;
+}}
+.gtk-reveal-menu-glyph {{
+  min-width: 16px;
+}}
+.gtk-reveal-menu-dot {{
+  min-width: 4px;
+  min-height: 4px;
+  background-color: {fg};
+  border-radius: 100%;
+}}
 /* gtk-meld file path bars — Adwaita tints ActionBar with accent (reads purple). */
 actionbar > revealer > box,
 .meld-actionbar > revealer > box {{
@@ -818,15 +885,157 @@ def select_theme(
 
 
 def sync_desktop_theme(profile: Optional[Profile] = None) -> bool:
-    """Force-reset Waybar / mako / fuzzel / system GTK dialog colors."""
+    """Force-reset hyprtabs + Waybar / mako / fuzzel / system GTK dialog colors."""
     profile = profile or load_profile()
+    sync_hyprbars(profile)
+    sync_hyprtabs(profile)
     sync_shell_chrome(profile)
     return True
 
 
 def sync_hyprbars(profile: Optional[Profile] = None) -> bool:
-    """Hyprbars is not used."""
+    """Hyprbars is not used. Older callers still refresh hyprtabs from here."""
+    profile = profile or load_profile()
+    return sync_hyprtabs(profile)
+
+
+def sync_hyprtabs(profile: Optional[Profile] = None) -> bool:
+    """Push GTK suite colors into plugin:hyprtabs (capsule, text, active pill)."""
+    profile = profile or load_profile()
+    return sync_hyprtabs_colors(
+        profile.surface_hex(),
+        profile.background,
+        profile.foreground,
+        chrome=profile.chrome,
+    )
+
+
+def sync_hyprtabs_colors(
+    surface_hex: str,
+    background_hex: str,
+    text_hex: str,
+    chrome: Optional[WindowChrome] = None,
+) -> bool:
+    ch = chrome or WindowChrome()
+    # Capsule ≈ Waybar: panel bg at ~75% alpha (50% vanished into dark wallpapers).
+    bar_rgba = _hex_to_hypr_rgba(background_hex, "c0")
+    text_rgb = _hex_to_hypr_rgb(text_hex)
+    # Active pill ≈ Waybar selected module: foreground fill, background label.
+    active_hex = text_hex
+    active_rgba = _hex_to_hypr_rgba(active_hex, "ff")
+    active_text_hex = (
+        background_hex if _relative_luminance(background_hex) < 0.45 else "#111111"
+    )
+    # If fg is dark (light theme), invert: surface pill + fg text.
+    if _relative_luminance(active_hex) < 0.45:
+        active_hex = _mix_hex(surface_hex, "#ffffff", 0.55)
+        if _relative_luminance(active_hex) < 0.35:
+            active_hex = _mix_hex(surface_hex, "#ffffff", 0.72)
+        active_rgba = _hex_to_hypr_rgba(active_hex, "ff")
+        active_text_hex = text_hex
+    active_text_rgb = _hex_to_hypr_rgb(active_text_hex)
+    if not bar_rgba or not text_rgb or not active_rgba or not active_text_rgb:
+        return False
+    font = _chrome_bar_font(ch)
+
+    path = _hyprland_conf_path()
+    if path is not None and path.is_file():
+        try:
+            original = path.read_text(encoding="utf-8")
+        except OSError:
+            original = None
+        if original is not None:
+            out = _rewrite_hyprtabs_assigns(
+                original,
+                {
+                    "bar_color": bar_rgba,
+                    "col.text": text_rgb,
+                    "tab_active_color": active_rgba,
+                    "tab_active_text_color": active_text_rgb,
+                    "bar_text_font": font,
+                },
+            )
+            if out != original:
+                try:
+                    path.write_text(out, encoding="utf-8")
+                except OSError:
+                    pass
+
+    if not _theme_session_safe():
+        _hyprctl_keyword("plugin:hyprtabs:bar_color", bar_rgba)
+        _hyprctl_keyword("plugin:hyprtabs:col.text", text_rgb)
+        _hyprctl_keyword("plugin:hyprtabs:tab_active_color", active_rgba)
+        _hyprctl_keyword("plugin:hyprtabs:tab_active_text_color", active_text_rgb)
+        _hyprctl_keyword("plugin:hyprtabs:bar_text_font", font)
     return True
+
+
+def _rewrite_hyprtabs_assigns(text: str, assigns: dict[str, str]) -> str:
+    """Set keys inside `hyprtabs { ... }` (.conf) or `hl.plugin.hyprtabs = { ... }` (.lua)."""
+    lua = "hl.plugin.hyprtabs" in text
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    in_tabs = False
+    depth = 0
+    seen: set[str] = set()
+    insert_indent = "    " if lua else "        "
+
+    def _fmt(key: str, value: str) -> str:
+        if not lua:
+            return f"{key} = {value}"
+        # Lua string values; dotted keys need bracket form.
+        if "." in key:
+            return f'["{key}"] = "{value}"'
+        return f'{key} = "{value}"'
+
+    def _line_key(trimmed: str) -> str | None:
+        for key in assigns:
+            if lua and "." in key:
+                pref = f'["{key}"]'
+                if trimmed.startswith(pref):
+                    return key
+            if trimmed.startswith(f"{key} =") or trimmed.startswith(f"{key}="):
+                return key
+        return None
+
+    for line in lines:
+        bare = line.rstrip("\r\n")
+        trimmed = bare.lstrip()
+        indent = bare[: len(bare) - len(trimmed)]
+        start = (
+            trimmed.startswith("hl.plugin.hyprtabs")
+            if lua
+            else trimmed.startswith("hyprtabs")
+        )
+        if not in_tabs and start:
+            in_tabs = True
+            depth = 0
+            seen = set()
+            out.append(line)
+            if "{" in trimmed:
+                depth += trimmed.count("{") - trimmed.count("}")
+            continue
+        if in_tabs:
+            depth += trimmed.count("{") - trimmed.count("}")
+            if depth <= 0:
+                nl = line[len(bare) :] or "\n"
+                for key, value in assigns.items():
+                    if key not in seen:
+                        out.append(f"{insert_indent}{_fmt(key, value)}{nl}")
+                in_tabs = False
+                out.append(line)
+                continue
+            key = _line_key(trimmed)
+            if key is not None:
+                nl = line[len(bare) :] or "\n"
+                out.append(f"{indent}{_fmt(key, assigns[key])}{nl}")
+                seen.add(key)
+                insert_indent = indent or insert_indent
+            else:
+                out.append(line)
+            continue
+        out.append(line)
+    return "".join(out)
 
 
 def sync_hyprbars_colors(
@@ -841,6 +1050,10 @@ def _chrome_bar_font(chrome: WindowChrome) -> str:
 
 
 def _hyprland_conf_path() -> Optional[Path]:
+    # Prefer Lua (Hyprland 0.55+); fall back to legacy .conf.
+    for path in _hypr_conf_paths():
+        if path.name == "hyprland.lua":
+            return path
     for path in _hypr_conf_paths():
         if path.name == "hyprland.conf":
             return path
@@ -852,7 +1065,7 @@ def _hypr_conf_paths() -> list[Path]:
     seen: set[Path] = set()
     out: list[Path] = []
     for folder in (xdg / "hypr", Path.home() / "configs" / "hypr"):
-        for name in ("hyprland.conf", "binds-personal.conf"):
+        for name in ("hyprland.lua", "hyprland.conf", "binds-personal.lua", "binds-personal.conf"):
             cand = folder / name
             if not cand.is_file():
                 continue
@@ -1004,7 +1217,12 @@ def sync_shell_chrome(profile: Optional[Profile] = None) -> bool:
     _sync_fuzzel_colors(bg, fg, i0, surface, accent, chrome.border_size, chrome.rounding)
     active = profile.hypr_active_border()
     inactive = profile.hypr_inactive_border()
-    if active and inactive:
+    # Thickness 0 = no visible outline, but keep a 1px transparent hit-target so
+    # resize_on_border / Super+drag still work (Hyprland has no grab without a border).
+    if chrome.border_size <= 0:
+        clear = "rgba(00000000) rgba(00000000) 0deg"
+        _sync_hypr_window_borders(clear, clear, profile.border_hex())
+    elif active and inactive:
         _sync_hypr_window_borders(active, inactive, profile.border_hex())
     _sync_hypr_window_geometry(chrome.border_size, chrome.rounding)
     _sync_hypr_workspace_background(bg)
@@ -1532,6 +1750,18 @@ window.filechooser button.suggested-action {{
   background-color: {accent};
   color: {on_accent};
 }}
+window.gtk-dialog box.dialog-action-area {{
+  padding: 0;
+}}
+window.gtk-dialog box.dialog-action-area button {{
+  min-width: 72px;
+  min-height: 28px;
+  padding: 4px 16px;
+  border-radius: 6px;
+}}
+window.gtk-dialog box.dialog-content label.dialog-detail {{
+  opacity: 0.85;
+}}
 *:selected, *:selected *,
 row:selected, row:selected *,
 listview > row:selected, listview > row:selected *,
@@ -1582,7 +1812,7 @@ def _shell_theme_index(profile: Profile) -> str:
     return (
         "[Desktop Entry]\n"
         "Type=X-GNOME-Metatheme\n"
-        "Name=hyprCore\n"
+        "Name=hyprCore Linux\n"
         f"Comment=Generated by gtk-theme from profile {profile.id} ({variant})\n"
         "Encoding=UTF-8\n"
         "\n"
@@ -1723,17 +1953,33 @@ def _sync_hypr_gtk_theme_env(is_dark: bool = True) -> None:
         "GTK_ICON_THEME": icons,
         "XDG_ICON_THEME": icons,
     }
-    for path in _config_candidates("hypr/hyprland.conf"):
-        if not path.is_file():
+    candidates = []
+    for rel in ("hypr/hyprland.lua", "hypr/hyprland.conf"):
+        candidates.extend(_config_candidates(rel))
+    seen: set[Path] = set()
+    for path in candidates:
+        try:
+            key = path.resolve()
+        except OSError:
+            key = path
+        if key in seen or not path.is_file():
             continue
+        seen.add(key)
         try:
             original = path.read_text(encoding="utf-8")
         except OSError:
             continue
         updated = original
         for key, value in replacements.items():
-            needle = re.compile(rf"^env\s*=\s*{re.escape(key)}\s*,\s*.+$", re.MULTILINE)
-            line = f"env = {key},{value}"
+            if path.suffix == ".lua":
+                needle = re.compile(
+                    rf'^hl\.env\("{re.escape(key)}",\s*"[^"]*"\)\s*$',
+                    re.MULTILINE,
+                )
+                line = f'hl.env("{key}", "{value}")'
+            else:
+                needle = re.compile(rf"^env\s*=\s*{re.escape(key)}\s*,\s*.+$", re.MULTILINE)
+                line = f"env = {key},{value}"
             if needle.search(updated):
                 updated = needle.sub(line, updated)
         if updated != original:
@@ -2265,13 +2511,14 @@ def _sync_hypr_workspace_background(bg: str) -> None:
         return
     wrote = False
     for path in _hypr_conf_paths():
-        if path.name != "hyprland.conf":
+        if path.name not in ("hyprland.lua", "hyprland.conf"):
             continue
         try:
             original = path.read_text(encoding="utf-8")
         except OSError:
             continue
-        out = _replace_hypr_assign(original, "background_color", rgb)
+        value = f'"{rgb}"' if path.suffix == ".lua" else rgb
+        out = _replace_hypr_assign(original, "background_color", value)
         if out != original:
             try:
                 path.write_text(out, encoding="utf-8")
@@ -2419,7 +2666,9 @@ def _sync_hypr_window_borders(active: str, inactive: str, panel_hex: str) -> Non
 
 
 def _sync_hypr_window_geometry(border_size: int, rounding: int) -> None:
-    size = str(border_size)
+    # Visual 0 → invisible 1px border so edge-resize still has a grab surface.
+    applied = 1 if border_size <= 0 else border_size
+    size = str(applied)
     round_s = str(rounding)
     for path in _hypr_conf_paths():
         try:
@@ -2429,6 +2678,9 @@ def _sync_hypr_window_geometry(border_size: int, rounding: int) -> None:
         out = original
         out = _replace_hypr_assign(out, "border_size", size)
         out = _replace_hypr_assign(out, "rounding", round_s)
+        out = _replace_hypr_assign(out, "resize_on_border", "true")
+        out = _replace_hypr_assign(out, "extend_border_grab_area", "20")
+        out = _replace_hypr_assign(out, "hover_icon_on_border", "true")
         if out != original:
             try:
                 path.write_text(out, encoding="utf-8")
@@ -2437,6 +2689,9 @@ def _sync_hypr_window_geometry(border_size: int, rounding: int) -> None:
     if not _theme_session_safe():
         _hyprctl_keyword("general:border_size", size)
         _hyprctl_keyword("decoration:rounding", round_s)
+        _hyprctl_keyword("general:resize_on_border", "true")
+        _hyprctl_keyword("general:extend_border_grab_area", "20")
+        _hyprctl_keyword("general:hover_icon_on_border", "true")
 
 
 # ---------------------------------------------------------------------------
@@ -2452,13 +2707,11 @@ def apply_chrome(profile: Optional[Profile] = None) -> None:
     from gi.repository import Gdk, Gtk
 
     profile = profile or load_profile()
-    hide_csd = hyprbars_active()
     settings = Gtk.Settings.get_default()
     if settings is not None:
         settings.set_property("gtk-application-prefer-dark-theme", profile.is_dark())
-        if hide_csd:
-            # Hyprbars draws − □ ×; hide GTK CSD window controls to avoid doubles.
-            settings.set_property("gtk-decoration-layout", ":")
+        # Keep an in-header close (X) even under hyprbars — suite apps rely on it.
+        settings.set_property("gtk-decoration-layout", ":close")
     try:
         apply_adw_color_scheme(profile)
     except Exception:
@@ -2476,34 +2729,8 @@ def apply_chrome(profile: Optional[Profile] = None) -> None:
             display, _chrome_provider, priority
         )
     css = chrome_css(profile)
-    if hide_csd:
-        css = css + "\n" + _HIDE_CSD_WINDOWCONTROLS_CSS
     _chrome_provider.load_from_data(css.encode("utf-8"))
 
-
-_HIDE_CSD_WINDOWCONTROLS_CSS = """
-headerbar windowcontrols,
-.titlebar windowcontrols,
-windowcontrols {
-  opacity: 0;
-  min-width: 0;
-  padding: 0;
-  margin: 0;
-}
-headerbar windowcontrols button,
-.titlebar windowcontrols button,
-windowcontrols button {
-  min-width: 0;
-  min-height: 0;
-  padding: 0;
-  margin: 0;
-  opacity: 0;
-  border: none;
-  background: none;
-  background-image: none;
-  box-shadow: none;
-}
-"""
 
 
 def hyprbars_active() -> bool:
@@ -2512,16 +2739,167 @@ def hyprbars_active() -> bool:
 
 
 def headerbar_show_title_buttons() -> bool:
-    """Prefer hiding GTK headerbar close/min/max when hyprbars owns them."""
-    return not hyprbars_active()
+    """Always show GTK headerbar window controls (suite wants an in-app close X)."""
+    return True
 
 
 def prepare_headerbar(headerbar) -> None:
-    """Apply suite defaults (hide CSD buttons under hyprbars)."""
+    """Show a close button on the right of the headerbar."""
     try:
-        headerbar.set_show_title_buttons(headerbar_show_title_buttons())
+        headerbar.set_show_title_buttons(True)
     except Exception:
         pass
+    try:
+        # Only close — no min/max (hyprbars / WM can still provide those).
+        headerbar.set_decoration_layout(":close")
+    except Exception:
+        pass
+
+
+def style_dialog(window) -> None:
+    """Tag a modal window so dialog chrome follows the suite profile."""
+    try:
+        window.add_css_class("gtk-dialog")
+    except Exception:
+        pass
+
+
+def present_message(parent, title: str, detail: str = "") -> None:
+    """Simple OK alert with a compact bottom-right button."""
+    present_buttons(parent, title, detail, ["OK"], default_idx=0, cancel_idx=0)
+
+
+def present_confirm(parent, title: str, detail: str, confirm_label: str, callback) -> None:
+    """Cancel / confirm chooser. ``callback(True)`` when confirm is chosen."""
+    present_buttons(
+        parent,
+        title,
+        detail,
+        ["Cancel", confirm_label],
+        default_idx=1,
+        cancel_idx=0,
+        callback=lambda idx: callback(idx == 1),
+    )
+
+
+def present_buttons(
+    parent,
+    title: str,
+    detail: str,
+    buttons,
+    default_idx: int = 0,
+    cancel_idx: int | None = 0,
+    callback=None,
+) -> None:
+    """Themed alert with actions aligned bottom-right (not full-bleed)."""
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    from gi.repository import Gdk, Gtk
+
+    win = Gtk.Window(title="", modal=True, resizable=False, default_width=420)
+    style_dialog(win)
+    if parent is not None:
+        try:
+            win.set_transient_for(parent)
+            win.set_destroy_with_parent(True)
+        except Exception:
+            pass
+
+    header = Gtk.HeaderBar()
+    prepare_headerbar(header)
+    header.set_title_widget(Gtk.Label(label=""))
+    win.set_titlebar(header)
+
+    page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    page.add_css_class("dialog-content")
+    page.set_margin_start(20)
+    page.set_margin_end(20)
+    page.set_margin_top(16)
+    page.set_margin_bottom(8)
+
+    title_label = Gtk.Label(label=title)
+    title_label.add_css_class("title-2")
+    title_label.set_wrap(True)
+    title_label.set_xalign(0.0)
+    title_label.set_selectable(True)
+    page.append(title_label)
+
+    if (detail or "").strip():
+        detail_label = Gtk.Label(label=detail)
+        detail_label.add_css_class("dialog-detail")
+        detail_label.set_wrap(True)
+        detail_label.set_xalign(0.0)
+        detail_label.set_selectable(True)
+        detail_label.set_max_width_chars(56)
+        page.append(detail_label)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    actions.add_css_class("dialog-action-area")
+    actions.set_halign(Gtk.Align.END)
+    actions.set_hexpand(True)
+    actions.set_margin_start(16)
+    actions.set_margin_end(16)
+    actions.set_margin_top(4)
+    actions.set_margin_bottom(14)
+
+    finished = {"done": False}
+
+    def finish(idx: int) -> None:
+        if finished["done"]:
+            return
+        finished["done"] = True
+        if callback is not None:
+            try:
+                callback(idx)
+            except Exception:
+                pass
+        win.close()
+
+    default_btn = None
+    for i, label in enumerate(buttons):
+        btn = Gtk.Button(label=label)
+        btn.set_hexpand(False)
+        btn.set_halign(Gtk.Align.END)
+        if i == default_idx:
+            btn.add_css_class("suggested-action")
+            default_btn = btn
+        btn.connect("clicked", lambda _b, idx=i: finish(idx))
+        actions.append(btn)
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    root.append(page)
+    root.append(actions)
+    win.set_child(root)
+
+    if default_btn is not None:
+        win.set_default_widget(default_btn)
+
+    cancel = -1 if cancel_idx is None else cancel_idx
+    key = Gtk.EventControllerKey()
+    key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+    def _on_key(_c, keyval, _code, _state):
+        if keyval == Gdk.KEY_Escape:
+            finish(cancel)
+            return True
+        return False
+
+    key.connect("key-pressed", _on_key)
+    win.add_controller(key)
+
+    def _on_close(_w):
+        if not finished["done"]:
+            finished["done"] = True
+            if callback is not None:
+                try:
+                    callback(cancel)
+                except Exception:
+                    pass
+        return False
+
+    win.connect("close-request", _on_close)
+    win.present()
 
 
 def append_profile_menu(parent, action_name: str = "win.theme") -> None:
@@ -2662,8 +3040,6 @@ def show_about_dialog(
     if comments:
         dialog.set_comments(comments)
     dialog.set_authors([SUITE_AUTHOR])
-    dialog.set_website(SUITE_WEBSITE)
-    dialog.set_website_label(SUITE_WEBSITE_LABEL)
     dialog.set_license_type(Gtk.License.GPL_3_0)
     dialog.set_modal(True)
     if parent is not None:
@@ -2702,7 +3078,7 @@ def install_about_action(
 
 
 def build_profile_only_menu(action_name: str = "win.theme"):
-    """Flat Profile section for a hamburger MenuButton that only offers themes."""
+    """Hierarchical Profile | Help menu for the reveal menubar."""
     import gi
 
     gi.require_version("Gtk", "4.0")
@@ -2725,12 +3101,215 @@ def build_profile_only_menu(action_name: str = "win.theme"):
         )
         profiles.append_item(item)
     profiles.append("Custom…", OPEN_THEME_EDITOR_MENU_ACTION)
+
     menu = Gio.Menu()
-    menu.append_section("Profile", profiles)
-    about = Gio.Menu()
-    about.append("About", ABOUT_MENU_ACTION)
-    menu.append_section(None, about)
+    profile_item = Gio.MenuItem.new("Profile", None)
+    profile_item.set_submenu(profiles)
+    menu.append_item(profile_item)
+
+    help_menu = Gio.Menu()
+    help_menu.append("About", ABOUT_MENU_ACTION)
+    help_item = Gio.MenuItem.new("Help", None)
+    help_item.set_submenu(help_menu)
+    menu.append_item(help_item)
     return menu
+
+
+def set_reveal_content_title(window, text: str) -> None:
+    """Set the header center title to the open document/media name.
+
+    The left brand label is left alone. Pass ``""`` to clear.
+    """
+    label = getattr(window, "_gtk_theme_content_label", None)
+    if label is None:
+        return
+    # Keep mapped — hiding falls back to window title and duplicates the brand.
+    label.set_text((text or "").strip())
+
+
+def _make_ellipsis_glyph(Gtk):
+    """CSS ellipsis (···) — no Nerd Font / unicode tofu dependency."""
+    glyph = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=3)
+    glyph.add_css_class("gtk-reveal-menu-glyph")
+    glyph.set_halign(Gtk.Align.CENTER)
+    glyph.set_valign(Gtk.Align.CENTER)
+    for _ in range(3):
+        dot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        dot.add_css_class("gtk-reveal-menu-dot")
+        glyph.append(dot)
+    return glyph
+
+
+def pack_reveal_controls(window, headerbar=None) -> None:
+    """Pack the hamburger/menubar slot after permanent toolbar buttons."""
+    controls = getattr(window, "_gtk_theme_reveal_controls", None)
+    if controls is None:
+        return
+    hb = headerbar
+    if hb is None:
+        try:
+            hb = window.get_titlebar()
+        except Exception:
+            hb = None
+    if hb is None or not hasattr(hb, "pack_start"):
+        return
+    if getattr(window, "_gtk_theme_reveal_controls_packed", False):
+        return
+    hb.pack_start(controls)
+    window._gtk_theme_reveal_controls_packed = True  # type: ignore[attr-defined]
+
+
+def install_reveal_menubar(window, headerbar, title: str, menu_model):
+    """Left brand + revealable PopoverMenuBar.
+
+    Returns ``(title_label, hamburger, menubar, content_label)``. Packs only the
+    brand title; call :func:`pack_reveal_controls` after other ``pack_start``
+    toolbar buttons. Uses a CSS ellipsis and a vertical-homogeneous stack so the
+    header height does not jump when the menu opens.
+    """
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    from gi.repository import Gdk, GLib, Gtk, Pango
+
+    prepare_headerbar(headerbar)
+
+    title_label = Gtk.Label(label=title)
+    title_label.add_css_class("title")
+    title_label.set_halign(Gtk.Align.START)
+    title_label.set_xalign(0.0)
+    title_label.set_ellipsize(Pango.EllipsizeMode.END)
+
+    hamburger = Gtk.ToggleButton()
+    hamburger.set_tooltip_text("Menu")
+    hamburger.add_css_class("flat")
+    hamburger.add_css_class("gtk-reveal-menu-btn")
+    hamburger.set_halign(Gtk.Align.START)
+    hamburger.set_valign(Gtk.Align.CENTER)
+    hamburger.set_child(_make_ellipsis_glyph(Gtk))
+
+    title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    title_box.add_css_class("gtk-reveal-title")
+    title_box.set_halign(Gtk.Align.START)
+    title_box.set_valign(Gtk.Align.CENTER)
+    title_box.append(title_label)
+
+    menubar = Gtk.PopoverMenuBar.new_from_model(menu_model)
+    menubar.add_css_class("gtk-reveal-menubar")
+    menubar.set_halign(Gtk.Align.START)
+    menubar.set_valign(Gtk.Align.CENTER)
+
+    controls = Gtk.Stack()
+    controls.add_css_class("gtk-reveal-controls")
+    controls.set_halign(Gtk.Align.START)
+    controls.set_valign(Gtk.Align.CENTER)
+    controls.set_hhomogeneous(False)
+    controls.set_vhomogeneous(True)
+    controls.set_transition_type(Gtk.StackTransitionType.NONE)
+    controls.set_size_request(-1, 34)
+    controls.add_named(hamburger, "btn")
+    controls.add_named(menubar, "menu")
+    controls.set_visible_child_name("btn")
+    window._gtk_theme_reveal_controls = controls  # type: ignore[attr-defined]
+    window._gtk_theme_reveal_controls_packed = False  # type: ignore[attr-defined]
+
+    content_label = Gtk.Label(label="")
+    content_label.add_css_class("title")
+    content_label.add_css_class("gtk-reveal-content-title")
+    content_label.set_halign(Gtk.Align.CENTER)
+    content_label.set_hexpand(True)
+    content_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+    try:
+        headerbar.set_title_widget(content_label)
+    except Exception:
+        pass
+    window._gtk_theme_content_label = content_label  # type: ignore[attr-defined]
+
+    if hasattr(headerbar, "pack_start"):
+        headerbar.pack_start(title_box)
+    else:
+        headerbar.pack_start(title_box)  # type: ignore[attr-defined]
+
+    def _on_toggled(btn):
+        if btn.get_active():
+            controls.set_visible_child_name("menu")
+            menubar.grab_focus()
+        else:
+            controls.set_visible_child_name("btn")
+
+    hamburger.connect("toggled", _on_toggled)
+
+    def _menubar_has_open_popover() -> bool:
+        child = menubar.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.MenuButton):
+                pop = child.get_popover()
+                if pop is not None and pop.get_visible():
+                    return True
+            child = child.get_next_sibling()
+        return False
+
+    def _wire_popover_autohide():
+        child = menubar.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.MenuButton):
+                pop = child.get_popover()
+                if pop is not None and "gtk-reveal-hooked" not in (
+                    pop.get_css_classes() or []
+                ):
+                    pop.add_css_class("gtk-reveal-hooked")
+
+                    def _on_closed(_p, ham=hamburger):
+                        def _later():
+                            if not ham.get_active():
+                                return False
+                            if _menubar_has_open_popover():
+                                return False
+                            ham.set_active(False)
+                            return False
+
+                        GLib.timeout_add(60, _later)
+
+                    pop.connect("closed", _on_closed)
+            child = child.get_next_sibling()
+
+    menubar.connect("realize", lambda *_: _wire_popover_autohide())
+    menubar.connect("map", lambda *_: _wire_popover_autohide())
+
+    key = Gtk.EventControllerKey()
+    key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+    def _on_key(_c, keyval, _code, _state):
+        if keyval == Gdk.KEY_Escape and hamburger.get_active():
+            hamburger.set_active(False)
+            return True
+        return False
+
+    key.connect("key-pressed", _on_key)
+    window.add_controller(key)
+
+    click = Gtk.GestureClick()
+    click.set_button(1)
+    click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+    def _on_pressed(_g, _n, x, y):
+        if not hamburger.get_active():
+            return
+        target = window.pick(x, y, Gtk.PickFlags.DEFAULT)
+        if target is None:
+            hamburger.set_active(False)
+            return
+        w = target
+        while w is not None:
+            if w in (title_box, controls, menubar, hamburger, title_label, content_label):
+                return
+            w = w.get_parent()
+        hamburger.set_active(False)
+
+    click.connect("pressed", _on_pressed)
+    window.add_controller(click)
+
+    return title_label, hamburger, menubar, content_label
 
 def install_profile_action(window, action_name: str = "theme"):
     """Stateful string action that selects a suite profile."""
@@ -2804,7 +3383,7 @@ def attach_profile_menu(
     about_comments: str = "",
     about_version: str = "0.1.0",
 ):
-    """Apply chrome and add a hamburger Profile (+ About) menu to the header bar."""
+    """Apply chrome and add a left title + hamburger reveal menubar (Profile | Help)."""
     import gi
 
     gi.require_version("Gtk", "4.0")
@@ -2825,6 +3404,7 @@ def attach_profile_menu(
                 headerbar = None
     if headerbar is None:
         raise ValueError("No HeaderBar available; pass headerbar=...")
+
     prepare_headerbar(headerbar)
 
     action = install_profile_action(window, "theme")
@@ -2838,11 +3418,30 @@ def attach_profile_menu(
     )
     menu = build_profile_only_menu("win.theme")
 
-    button = Gtk.MenuButton()
-    button.set_icon_name("open-menu-symbolic")
-    button.set_tooltip_text("Menu")
-    button.set_menu_model(menu)
-    headerbar.pack_end(button)
+    # Prefer an existing title widget's text, then about_name / window title.
+    existing_title = None
+    try:
+        tw = headerbar.get_title_widget()
+        if isinstance(tw, Gtk.Label):
+            existing_title = tw.get_text() or None
+    except Exception:
+        pass
+    title_text = existing_title or program_name
+
+    title_label, _hamburger, _menubar, content_label = install_reveal_menubar(
+        window, headerbar, title_text, menu
+    )
+    # Left = brand; center = open document/media (via set_reveal_content_title).
+    window._gtk_theme_title_label = title_label  # type: ignore[attr-defined]
+    window._gtk_theme_content_label = content_label  # type: ignore[attr-defined]
+
+    # Pack controls after the current call stack so callers can pack_start
+    # permanent toolbar buttons first (calendar prev/next, etc.).
+    def _pack_controls_later():
+        pack_reveal_controls(window, headerbar)
+        return False
+
+    GLib.idle_add(_pack_controls_later)
 
     def _sync(profile: Profile) -> None:
         action.set_state(GLib.Variant.new_string(profile.id))

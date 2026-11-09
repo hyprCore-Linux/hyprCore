@@ -120,7 +120,7 @@ if [ "$fail" -gt 0 ] || [ "$missing" -gt 0 ]; then
 	echo "=== Remediation ==="
 	echo "• Re-login to hyprcore-hyprland (Layer B env must include GSK_RENDERER=cairo)."
 	echo "• Launch via Super+D (hyprcore-fuzzel) or: hyprcore-launch APP"
-	echo "• audacity/blender: desktop Exec must use hyprcore-x11-app; xwayland enabled in hyprland.conf"
+	echo "• audacity/blender: desktop Exec must use hyprcore-x11-app; xwayland enabled in hyprland.lua"
 	echo "• GPU apps in VM: VirtualBox 3D acceleration + Guest Additions"
 	echo "• Missing hyprcore-launch: rebuild ISO or copy from overlay /usr/local/bin/"
 	exit 1

@@ -23,7 +23,7 @@ configs/
   ssh/
   file-templates/
   gtk-apps/
-  hypr/binds-personal.conf
+  hypr/binds-personal.lua
   waybar/{config,style.css}
   fuzzel/fuzzel.ini
   mako/config

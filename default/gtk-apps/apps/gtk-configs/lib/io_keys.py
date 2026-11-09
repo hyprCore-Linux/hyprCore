@@ -121,13 +121,39 @@ def get_flat_key(text: str, key: str, *, sep: str = "=") -> str | None:
     return None
 
 
+
+def _looks_like_hypr_lua(text: str) -> bool:
+    return "hl.config" in text or "hl.env" in text or "hl.monitor" in text
+
+
+def _hypr_format_value(text: str, value: str) -> str:
+    """Quote non-numeric values for Lua; leave hyprlang bare."""
+    v = value.strip()
+    if not _looks_like_hypr_lua(text):
+        return v
+    if not v:
+        return '""'
+    if v[0] in ('"', "'") and v[-1] == v[0]:
+        return v
+    if re.fullmatch(r"-?\d+(\.\d+)?", v):
+        return v
+    if v in ("true", "false", "nil"):
+        return v
+    if v.startswith("{") or v.startswith("rgb") or v.startswith("rgba"):
+        # rgb()/tables: quote rgb tokens for Lua string fields
+        if v.startswith("rgb") or v.startswith("rgba"):
+            return f'"{v}"'
+        return v
+    return f'"{v}"'
+
 def set_hypr_key(text: str, block_path: list[str], key: str, value: str) -> str:
     if not block_path:
         return set_flat_key(text, key, value, sep="=")
 
+    value = _hypr_format_value(text, value)
     lines = text.splitlines(keepends=True)
-    open_re = re.compile(r"^(\s*)([A-Za-z0-9_-]+)(\s*)\{\s*(#.*)?$")
-    close_re = re.compile(r"^(\s*)\}\s*(#.*)?$")
+    open_re = re.compile(r"^(\s*)([A-Za-z0-9_.-]+)(\s*=\s*|\s*)\{\s*(#.*|--.*)?$")
+    close_re = re.compile(r"^(\s*)\}\s*,?\s*(#.*|--.*)?$")
     key_re = re.compile(rf"^(\s*)({re.escape(key)})(\s*=\s*)(.*)$")
 
     name_stack: list[str] = []
@@ -194,8 +220,8 @@ def set_hypr_key(text: str, block_path: list[str], key: str, value: str) -> str:
 
 def get_hypr_key(text: str, block_path: list[str], key: str) -> str | None:
     lines = text.splitlines()
-    open_re = re.compile(r"^(\s*)([A-Za-z0-9_-]+)(\s*)\{\s*(#.*)?$")
-    close_re = re.compile(r"^(\s*)\}\s*(#.*)?$")
+    open_re = re.compile(r"^(\s*)([A-Za-z0-9_.-]+)(\s*=\s*|\s*)\{\s*(#.*|--.*)?$")
+    close_re = re.compile(r"^(\s*)\}\s*,?\s*(#.*|--.*)?$")
     key_re = re.compile(rf"^\s*{re.escape(key)}\s*=\s*(.*?)\s*$")
     name_stack: list[str] = []
     for i, line in enumerate(lines):
@@ -216,6 +242,11 @@ def get_hypr_key(text: str, block_path: list[str], key: str) -> str | None:
             val = m.group(1).strip()
             if "#" in val:
                 val = val.split("#", 1)[0].rstrip()
+            if "--" in val:
+                val = val.split("--", 1)[0].rstrip()
+            val = val.strip().rstrip(",")
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                val = val[1:-1]
             return val
     return None
 

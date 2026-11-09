@@ -32,10 +32,15 @@ fi
 if grep -qw boot=live /proc/cmdline 2>/dev/null; then
 	_hypr_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 	if [ -d "$_hypr_conf" ] && [ -w "$_hypr_conf" ]; then
-		cat >"$_hypr_conf/monitors.conf" <<'EOF'
-# Live session. Each connected display uses its preferred mode.
-# The workstation layout stays in /etc/skel for the installed system.
-monitor=,preferred,auto,1
+		cat >"$_hypr_conf/monitors.lua" <<'EOF'
+-- Live session. Each connected display uses its preferred mode.
+-- The workstation layout stays in /etc/skel for the installed system.
+hl.monitor({
+    output = "",
+    mode = "preferred",
+    position = "auto",
+    scale = "1",
+})
 EOF
 	fi
 fi
