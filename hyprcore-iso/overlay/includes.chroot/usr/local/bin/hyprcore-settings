@@ -9,10 +9,11 @@ os.environ.setdefault("XDG_CURRENT_DESKTOP", "Hyprland")
 
 share = os.path.expanduser("~/.local/share/hyprcore")
 here = os.path.dirname(os.path.realpath(__file__))
-# Installed hyprCore modules win. A checkout next to this script still works.
+# The copy next to this script wins, then ~/.local/share, then /usr/share.
+# /usr/share is an older install and was shadowing the live checkout.
+sys.path.insert(0, "/usr/share/hyprcore")
 sys.path.insert(0, share)
 sys.path.insert(0, here)
-sys.path.insert(0, "/usr/share/hyprcore")
 
 from hyprcore_choice_dialog import HubSection, show_hub  # noqa: E402
 import hyprcore_quick_settings as quick  # noqa: E402

@@ -85,6 +85,12 @@ class _SettingsPage(Gtk.Box):
     def _open_card(self) -> Gtk.Box:
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         card.get_style_context().add_class("hyprcore-card")
+        try:
+            import hyprcore_choice_dialog as choice
+
+            choice.paint_settings_card(card)
+        except Exception:
+            pass
         Gtk.Box.pack_start(self, card, False, False, 0)
         self._card = card
         return card
@@ -397,10 +403,26 @@ def _run(argv: list[str], timeout: float = 8.0) -> tuple[bool, str]:
         return False, str(exc)
 
 
+def _clear_log(scroll: Gtk.ScrolledWindow, view: Gtk.TextView) -> None:
+    """Log views use the page color. The theme's text background is darker."""
+    try:
+        import hyprcore_choice_dialog as choice
+
+        choice._style_text_well(scroll, view)
+    except Exception:
+        pass
+
+
 def _button(label: str) -> Gtk.Button:
     btn = Gtk.Button(label=label)
     btn.set_relief(Gtk.ReliefStyle.NONE)
     btn.get_style_context().add_class("hyprcore-secondary")
+    try:
+        import hyprcore_choice_dialog as choice
+
+        choice.paint_settings_button(btn)
+    except Exception:
+        pass
     return btn
 
 
@@ -1522,6 +1544,7 @@ def configs_page() -> Gtk.Widget:
     text_scroll.set_vexpand(True)
     text_scroll.set_size_request(-1, 240)
     text_scroll.add(view)
+    _clear_log(text_scroll, view)
     box.pack_start(text_scroll, True, True, 0)
     current: dict = {"path": None}
     buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -2626,6 +2649,7 @@ def updates_page() -> Gtk.Widget:
     scroll.set_vexpand(True)
     scroll.set_size_request(-1, 280)
     scroll.add(view)
+    _clear_log(scroll, view)
     box.pack_start(scroll, True, True, 0)
 
     sink = {"buf": buf, "view": view, "status": status, "button": button}
@@ -2932,6 +2956,7 @@ def software_page() -> Gtk.Widget:
     log_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
     log_scroll.set_size_request(-1, 140)
     log_scroll.add(view)
+    _clear_log(log_scroll, view)
     log_btn = _button("Log  ▸")
     log_reveal = Gtk.Revealer()
     log_reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
@@ -3578,6 +3603,7 @@ def flatpak_page() -> Gtk.Widget:
     log_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
     log_scroll.set_size_request(-1, 140)
     log_scroll.add(view)
+    _clear_log(log_scroll, view)
     log_btn = _button("Log  ▸")
     log_reveal = Gtk.Revealer()
     log_reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)

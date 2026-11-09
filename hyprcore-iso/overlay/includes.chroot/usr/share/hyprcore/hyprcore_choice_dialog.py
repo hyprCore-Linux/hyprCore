@@ -118,6 +118,7 @@ def request_hub_reopen(section: str, drill: str = "") -> None:
 
 # Opaque fill drawn under Waybar while the settings hub is open (no Waybar reload).
 _HUB_BAR_BACKDROP: Dict[str, object] = {"win": None}
+_HUB_SHADE: Dict[str, object] = {"win": None}
 
 
 def _settings_request_path() -> str:
@@ -940,6 +941,203 @@ def _force_background(widget: Gtk.Widget, red: float, green: float, blue: float,
             return
 
 
+def _paint_hex(widget: Gtk.Widget, hex_color: str, alpha: float = 1.0) -> None:
+    """Theme fill that wins over the GTK theme. CSS backgrounds do not paint
+    on this layer-shell window; override_background_color does."""
+    rgb = _hex_rgb(hex_color) or (26, 27, 38)
+    _force_background(widget, rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0, alpha)
+
+
+def _propagate_children(widget: Gtk.Widget, cr) -> None:
+    if not isinstance(widget, Gtk.Container):
+        return
+    try:
+        children = widget.get_children()
+    except Exception:
+        return
+    for child in children:
+        try:
+            widget.propagate_draw(child, cr)
+        except Exception:
+            pass
+
+
+def _round_corners(cr, x, y, w, h, radius, tl, tr, br, bl) -> None:
+    """Clockwise rounded rect. A false corner stays square."""
+    limit = min(w / 2.0, h / 2.0)
+    base = max(0.0, min(float(radius), limit))
+
+    def rad(on: bool) -> float:
+        return base if on else 0.0
+
+    rtl, rtr, rbr, rbl = rad(tl), rad(tr), rad(br), rad(bl)
+    cr.new_sub_path()
+    if rtl:
+        cr.arc(x + rtl, y + rtl, rtl, math.pi, 3 * math.pi / 2)
+    else:
+        cr.move_to(x, y)
+    if rtr:
+        cr.line_to(x + w - rtr, y)
+        cr.arc(x + w - rtr, y + rtr, rtr, -math.pi / 2, 0)
+    else:
+        cr.line_to(x + w, y)
+    if rbr:
+        cr.line_to(x + w, y + h - rbr)
+        cr.arc(x + w - rbr, y + h - rbr, rbr, 0, math.pi / 2)
+    else:
+        cr.line_to(x + w, y + h)
+    if rbl:
+        cr.line_to(x + rbl, y + h)
+        cr.arc(x + rbl, y + h - rbl, rbl, math.pi / 2, math.pi)
+    else:
+        cr.line_to(x, y + h)
+    cr.close_path()
+
+
+def _paint_bar(widget: Gtk.Widget) -> None:
+    """Title bar in the sidebar color. The top-right follows the window corner."""
+
+    def _draw(w, cr) -> bool:
+        width = w.get_allocated_width()
+        height = w.get_allocated_height()
+        if width <= 1 or height <= 1:
+            return False
+        rgb = _hex_rgb(_theme_chrome().get("sidebar") or "") or (54, 55, 55)
+        cr.save()
+        _round_corners(cr, 0, 0, width, height, 16, False, True, False, False)
+        cr.set_source_rgb(rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0)
+        cr.fill()
+        cr.restore()
+        _propagate_children(w, cr)
+        return True
+
+    try:
+        widget.set_app_paintable(True)
+    except Exception:
+        pass
+    widget.connect("draw", _draw)
+
+
+def _paint_rounded(widget: Gtk.Widget, hex_color: str, *, tr: bool = False, br: bool = False) -> None:
+    """Opaque fill that leaves the window's right corners transparent."""
+
+    def _draw(w, cr) -> bool:
+        width = w.get_allocated_width()
+        height = w.get_allocated_height()
+        if width <= 1 or height <= 1:
+            return False
+        rgb = _hex_rgb(hex_color) or (33, 33, 33)
+        cr.save()
+        _round_corners(cr, 0, 0, width, height, 16, False, tr, br, False)
+        cr.set_source_rgb(rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0)
+        cr.fill()
+        cr.restore()
+        _propagate_children(w, cr)
+        return True
+
+    try:
+        widget.set_app_paintable(True)
+    except Exception:
+        pass
+    widget.connect("draw", _draw)
+
+
+def paint_settings_card(card: Gtk.Widget) -> None:
+    """Rounded theme card. Used by the settings pages, which build their own boxes."""
+
+    def _draw(w, cr) -> bool:
+        width = w.get_allocated_width()
+        height = w.get_allocated_height()
+        if width <= 2 or height <= 2:
+            return False
+        chrome = _theme_chrome()
+        fill = _hex_rgb(chrome.get("card") or "") or (43, 45, 59)
+        edge = _hex_rgb(chrome.get("border") or "") or (56, 59, 75)
+        cr.save()
+        _rounded_rect(cr, 0.5, 0.5, width - 1, height - 1, 12)
+        cr.set_source_rgb(fill[0] / 255.0, fill[1] / 255.0, fill[2] / 255.0)
+        cr.fill_preserve()
+        cr.set_source_rgb(edge[0] / 255.0, edge[1] / 255.0, edge[2] / 255.0)
+        cr.set_line_width(1)
+        cr.stroke()
+        cr.restore()
+        _propagate_children(w, cr)
+        return True
+
+    try:
+        card.set_app_paintable(True)
+    except Exception:
+        pass
+    card.connect("draw", _draw)
+
+
+def paint_settings_button(btn: Gtk.Widget) -> None:
+    """Solid theme button. Primary uses the accent; secondary uses the quiet bar."""
+
+    def _draw(w, cr) -> bool:
+        width = w.get_allocated_width()
+        height = w.get_allocated_height()
+        if width <= 2 or height <= 2:
+            return False
+        chrome = _theme_chrome()
+        ctx = w.get_style_context()
+        primary = False
+        try:
+            primary = ctx.has_class("hyprcore-primary")
+        except Exception:
+            primary = False
+        fill_hex = chrome["accent"] if primary else chrome["control"]
+        fill = _hex_rgb(fill_hex) or (43, 45, 59)
+        edge = _hex_rgb(chrome.get("border") or "") or fill
+        cr.save()
+        _rounded_rect(cr, 0.5, 0.5, width - 1, height - 1, 8)
+        cr.set_source_rgb(fill[0] / 255.0, fill[1] / 255.0, fill[2] / 255.0)
+        cr.fill_preserve()
+        if not primary:
+            cr.set_source_rgb(edge[0] / 255.0, edge[1] / 255.0, edge[2] / 255.0)
+            cr.set_line_width(1)
+            cr.stroke()
+        cr.restore()
+        _propagate_children(w, cr)
+        return True
+
+    try:
+        btn.set_app_paintable(True)
+    except Exception:
+        pass
+    btn.connect("draw", _draw)
+
+
+def _paint_nav_button(btn: Gtk.Widget) -> None:
+    """Selected row is the profile accent. Unselected rows stay clear."""
+
+    def _draw(w, cr) -> bool:
+        width = w.get_allocated_width()
+        height = w.get_allocated_height()
+        if width <= 2 or height <= 2:
+            return False
+        selected = False
+        try:
+            selected = w.get_style_context().has_class("selected")
+        except Exception:
+            selected = False
+        if selected:
+            fill = _hex_rgb(_theme_chrome().get("nav_selected") or "") or (122, 162, 247)
+            cr.save()
+            _rounded_rect(cr, 1, 1, width - 2, height - 2, 8)
+            cr.set_source_rgb(fill[0] / 255.0, fill[1] / 255.0, fill[2] / 255.0)
+            cr.fill()
+            cr.restore()
+        _propagate_children(w, cr)
+        return True
+
+    try:
+        btn.set_app_paintable(True)
+    except Exception:
+        pass
+    btn.connect("draw", _draw)
+
+
 def _clear_widget_bg(widget: Gtk.Widget) -> None:
     _force_background(widget, 0.0, 0.0, 0.0, 0.0)
     child = None
@@ -1122,6 +1320,85 @@ def _hub_bar_backdrop_show() -> None:
     win.show_all()
 
 
+def _hub_shade_hide() -> None:
+    win = _HUB_SHADE.get("win")
+    _HUB_SHADE["win"] = None
+    if win is None:
+        return
+    try:
+        win.destroy()
+    except Exception:
+        pass
+
+
+def _hub_shade_show(on_dismiss) -> None:
+    """Full-screen dim behind Settings so the hub reads as the focused window."""
+    _hub_shade_hide()
+    win = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+    win.set_decorated(False)
+    win.set_resizable(False)
+    win.set_accept_focus(False)
+    win.set_can_focus(False)
+    try:
+        Gdk.set_program_class("hyprcore-settings-shade")
+    except Exception:
+        pass
+    _enable_rgba(win)
+    GtkLayerShell.init_for_window(win)
+    try:
+        GtkLayerShell.set_namespace(win, "hyprcore-settings-shade")
+    except Exception:
+        pass
+    # Same overlay layer as Settings, mapped first so the hub stays above it
+    # and above Waybar. -1 keeps the shade over Waybar's exclusive strip.
+    GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
+    GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.NONE)
+    GtkLayerShell.set_exclusive_zone(win, -1)
+    gdk = _pointer_monitor()
+    if gdk is not None:
+        try:
+            GtkLayerShell.set_monitor(win, gdk)
+        except Exception:
+            pass
+    for edge in (
+        GtkLayerShell.Edge.TOP,
+        GtkLayerShell.Edge.RIGHT,
+        GtkLayerShell.Edge.BOTTOM,
+        GtkLayerShell.Edge.LEFT,
+    ):
+        GtkLayerShell.set_anchor(win, edge, True)
+        GtkLayerShell.set_margin(win, edge, 0)
+    if gdk is not None:
+        geo = gdk.get_geometry()
+        try:
+            win.set_size_request(int(geo.width), int(geo.height))
+        except Exception:
+            pass
+
+    def _draw(widget, cr) -> bool:
+        width = int(widget.get_allocated_width() or 0)
+        height = int(widget.get_allocated_height() or 0)
+        if width <= 1 or height <= 1:
+            return False
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.45)
+        cr.rectangle(0, 0, width, height)
+        cr.fill()
+        # Returning true keeps the theme from covering the translucent black.
+        return True
+
+    win.connect("draw", _draw)
+
+    def _click(*_a):
+        if callable(on_dismiss):
+            on_dismiss()
+        return True
+
+    win.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+    win.connect("button-press-event", _click)
+    _HUB_SHADE["win"] = win
+    win.show_all()
+
+
 def _glass_root(
     box: Gtk.Box,
     alpha: float = 1.0,
@@ -1246,9 +1523,9 @@ def _mix_hex(a: str, b: str, t: float) -> str:
         br, bg, bb = parse(b)
     except Exception:
         return a
-    r = int(ar + (br - ar) * t)
-    g = int(ag + (bg - ag) * t)
-    b_ = int(ab + (bb - ab) * t)
+    r = round(ar + (br - ar) * t)
+    g = round(ag + (bg - ag) * t)
+    b_ = round(ab + (bb - ab) * t)
     return f"#{r:02x}{g:02x}{b_:02x}"
 
 
@@ -1281,7 +1558,8 @@ def _theme_chrome() -> dict[str, str]:
 
     bar0, bar1 = _pair("bar", _mix_hex(bg, fg, 0.12), _mix_hex(bg, fg, 0.28))
     quiet0, _quiet1 = _pair("bar_inactive", _mix_hex(bg, fg, 0.06), bar0)
-    sidebar = str(palette[0]) if palette and isinstance(palette[0], str) and _hex_rgb(str(palette[0])) else _mix_hex(bg, "#000000", 0.35)
+    # Same surface gtk-files paints on placessidebar: 10% of the foreground into the background.
+    sidebar = _mix_hex(bg, fg, 0.10)
     if str(chrome_raw.get("gradient") or "rtl") == "ltr":
         bar_fill = f"linear-gradient(to right, {bar0}, {bar1})"
     else:
@@ -1290,6 +1568,7 @@ def _theme_chrome() -> dict[str, str]:
     hint = _mix_hex(fg, bg, 0.38)
     well_border = border
     on_accent = "#1d2021" if _relative_luminance(accent) >= 0.45 else fg
+    bar_dir = "right" if str(chrome_raw.get("gradient") or "rtl") == "ltr" else "left"
     return {
         "bg": bg,
         "fg": fg,
@@ -1307,8 +1586,10 @@ def _theme_chrome() -> dict[str, str]:
         "well_border": well_border,
         "sidebar": sidebar,
         "bar0": bar0,
+        "bar1": bar1,
+        "bar_dir": bar_dir,
         "bar_fill": bar_fill,
-        "card": bar0,
+        "card": bg,
         "control": quiet0,
         "control_hover": bar1,
         "switch_off": _mix_hex(bg, border, 0.55),
@@ -1878,6 +2159,7 @@ def pack_title_with_close(parent: Gtk.Box, title_widget: Gtk.Widget, on_close) -
     """Title on the left, × close on the top-right."""
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     row.get_style_context().add_class("hyprcore-headerbar")
+    _paint_bar(row)
     title_widget.set_hexpand(True)
     try:
         title_widget.set_ellipsize(Pango.EllipsizeMode.END)
@@ -2007,6 +2289,7 @@ def _make_tile(
     btn.get_style_context().add_class("hyprcore-tile")
     if nav:
         btn.get_style_context().add_class("hyprcore-nav")
+        _paint_nav_button(btn)
     btn.set_relief(Gtk.ReliefStyle.NONE)
     btn.set_hexpand(True)
     btn.set_halign(Gtk.Align.FILL)
@@ -2925,6 +3208,7 @@ def attach_page(
     scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
     scroll.get_style_context().add_class("hyprcore-clear")
     scroll.get_style_context().add_class("hyprcore-page-body")
+    scroll.connect("map", lambda *_a: _clear_widget_bg(scroll) or False)
     scroll.set_hexpand(True)
     scroll.set_vexpand(True)
     scroll.set_margin_top(10)
@@ -3121,10 +3405,12 @@ def show_hub(
     nav_col.set_size_request(nav_w, -1)
     nav_col.set_vexpand(True)
     nav_col.get_style_context().add_class("hyprcore-sidebar")
+    _paint_hex(nav_col, _theme_chrome()["sidebar"])
     body.pack_start(nav_col, False, False, 0)
 
     head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
     head.get_style_context().add_class("hyprcore-sidehead")
+    _paint_rounded(head, _theme_chrome()["sidebar"])
     head.set_margin_start(6)
     head.set_margin_end(6)
     search_btn = Gtk.Button()
@@ -3149,6 +3435,7 @@ def show_hub(
     nav_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
     nav_scroll.set_vexpand(True)
     nav_scroll.get_style_context().add_class("hyprcore-clear")
+    nav_scroll.connect("map", lambda *_a: _clear_widget_bg(nav_scroll) or False)
     nav = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
     nav.set_size_request(nav_w, -1)
     nav_scroll.add(nav)
@@ -3158,6 +3445,7 @@ def show_hub(
     sep.set_size_request(1, -1)
     sep.set_vexpand(True)
     sep.get_style_context().add_class("hyprcore-sep")
+    _paint_hex(sep, _theme_chrome()["hairline"])
     body.pack_start(sep, False, False, 0)
 
     right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -3165,6 +3453,7 @@ def show_hub(
     right.set_hexpand(True)
     right.set_vexpand(True)
     right.get_style_context().add_class("hyprcore-content")
+    _paint_rounded(right, _theme_chrome()["bg"], tr=True, br=True)
     body.pack_start(right, True, True, 0)
 
     rest_left = max(0, (mon_w - panel_w) // 2)
@@ -3193,6 +3482,7 @@ def show_hub(
         except Exception:
             pass
         _hub_bar_backdrop_hide()
+        _hub_shade_hide()
         Gtk.main_quit()
 
     def _remove_escape_hook() -> None:
@@ -3321,6 +3611,25 @@ def show_hub(
             pass
         size["placed"] = placed
 
+    def _reveal_nav(btn: Gtk.Widget) -> bool:
+        """Keep the accent row on screen. System sits at the bottom of the list."""
+        try:
+            alloc = btn.get_allocation()
+            if int(alloc.height) < 2:
+                return True
+            adj = nav_scroll.get_vadjustment()
+            page = float(adj.get_page_size() or 0)
+            upper = float(adj.get_upper() or 0)
+            y = float(alloc.y)
+            target = y - 8
+            if page > 0:
+                target = min(target, max(0.0, upper - page))
+            adj.set_value(max(0.0, target))
+        except Exception:
+            return False
+        btn.queue_draw()
+        return False
+
     def _show(section_id: str, drill_id: str) -> None:
         section = by_id.get(section_id)
         if section is None:
@@ -3330,8 +3639,10 @@ def show_hub(
             ctx = btn.get_style_context()
             if sid == section_id:
                 ctx.add_class("selected")
+                GLib.idle_add(_reveal_nav, btn)
             else:
                 ctx.remove_class("selected")
+            btn.queue_draw()
         for child in list(right.get_children()):
             right.remove(child)
             child.destroy()
@@ -3497,6 +3808,7 @@ def show_hub(
         pass
     try:
         win.set_can_focus(True)
+        _hub_shade_show(_quit)
         win.show_all()
         win.present()
         try:
@@ -3510,6 +3822,7 @@ def show_hub(
         except Exception:
             pass
         _hub_bar_backdrop_hide()
+        _hub_shade_hide()
         reopen = _HUB_CONTROL.get("reopen")
         _HUB_CONTROL["reopen"] = None
         _HUB_CONTROL["active"] = False
