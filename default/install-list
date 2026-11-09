@@ -12,7 +12,6 @@
 #
 # Hook-only (not listed): google-chrome-stable / cursor — Desktop Calamares only.
 # Backports hook 997 + Calamares Desktop: Hyprland stack + ydotool.
-# Hook 998 builds hyprtabs against the ISO Hyprland ABI.
 # Not on live (personalize only if you want them): audacity, blender, systemsettings.
 
 # --- live ---
@@ -158,7 +157,6 @@ python3-pip # pip for gtk-neuron cursor-sdk (optional repair)
 # Hyprland session as shipped (keybinds + settings panel + hyprpm plugins)
 wf-recorder # Screen recording (Ctrl+Alt+Shift+R in hyprland.lua)
 kanshi # Monitor hot-plug profiles for Wayland compositors
-cmake # Build the hyprtabs plugin
 g++ # C++ compiler for hyprpm plugins
 meson # Build system used by hyprpm plugin builds
 ninja-build # Ninja backend for meson / hyprpm

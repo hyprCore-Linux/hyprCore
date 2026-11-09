@@ -7,6 +7,7 @@ import json
 import math
 import os
 import platform
+import re
 import subprocess
 import sys
 import threading
@@ -16,6 +17,7 @@ import cairo
 import gi
 
 gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
 gi.require_version("PangoCairo", "1.0")
 from gi.repository import Gdk, Gtk, GLib, Pango, PangoCairo  # noqa: E402
 
@@ -62,13 +64,7 @@ _APP_CATEGORIES = (
 )
 
 _CHROME_PREFS = Path.home() / ".config" / "hypr" / "hyprcore-window-chrome.json"
-_PLUGIN_SO_CANDIDATES = {
-    "hyprtabs": (
-        Path.home() / ".local/lib/hyprland/plugins/libhyprtabs.so",
-        Path("/usr/local/lib/hyprland/plugins/libhyprtabs.so"),
-        Path("/usr/lib/x86_64-linux-gnu/hyprland/plugins/libhyprtabs.so"),
-    ),
-}
+_PLUGIN_SO_CANDIDATES: dict[str, tuple[Path, ...]] = {}
 
 
 class _SettingsPage(Gtk.Box):
@@ -134,30 +130,13 @@ def _section(text: str) -> Gtk.Label:
 
 
 def _chrome_prefs() -> dict[str, bool]:
-    data = {"hyprtabs": False}
-    try:
-        raw = json.loads(_CHROME_PREFS.read_text(encoding="utf-8"))
-    except Exception:
-        return data
-    if not isinstance(raw, dict):
-        return data
-    if "hyprtabs" in raw:
-        data["hyprtabs"] = bool(raw["hyprtabs"])
-    return data
+    return {}
 
 
 def _save_chrome_prefs(prefs: dict[str, bool]) -> None:
-    try:
-        # Merge so toggling one switch cannot drop the others.
-        current = _chrome_prefs()
-        current.update({k: bool(v) for k, v in prefs.items()})
-        _CHROME_PREFS.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "hyprtabs": bool(current.get("hyprtabs", False)),
-        }
-        _CHROME_PREFS.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        pass
+    """Window-chrome plugin prefs removed with hyprtabs."""
+    return
+
 
 
 def _plugin_so(name: str) -> str:
@@ -182,20 +161,6 @@ def _plugin_loaded(name: str) -> bool:
     return any(str(row.get("name") or "").lower() == needle for row in rows if isinstance(row, dict))
 
 
-def _hyprtabs_enabled_live() -> bool:
-    if not _plugin_loaded("hyprtabs"):
-        return False
-    ok, out = _run(["hyprctl", "getoption", "plugin:hyprtabs:enabled"], timeout=3)
-    if not ok:
-        return True
-    for line in (out or "").splitlines():
-        if line.strip().startswith("int:"):
-            try:
-                return int(line.split(":", 1)[1].strip()) != 0
-            except ValueError:
-                break
-    return True
-
 
 def _window_manager_py() -> str:
     for path in (
@@ -208,41 +173,13 @@ def _window_manager_py() -> str:
     return ""
 
 
-def _set_hyprtabs(on: bool) -> str:
-    prefs = _chrome_prefs()
-    prefs["hyprtabs"] = bool(on)
-    _save_chrome_prefs(prefs)
-    wm = _window_manager_py()
-    if on:
-        if not _plugin_loaded("hyprtabs"):
-            so = _plugin_so("hyprtabs")
-            if not so:
-                return "hyprtabs plugin was not found"
-            ok, out = _run(["hyprctl", "plugin", "load", so], timeout=8)
-            if not ok and not _plugin_loaded("hyprtabs"):
-                return out or "Could not load hyprtabs"
-        _run(["hyprctl", "keyword", "plugin:hyprtabs:enabled", "true"], timeout=4)
-        # Switch desktop layout to tabbed (full-width under the strip).
-        if wm:
-            _run([wm, "layout-set", "tabs"], timeout=12)
-        return ""
-    if _plugin_loaded("hyprtabs"):
-        ok, out = _run(["hyprctl", "keyword", "plugin:hyprtabs:enabled", "false"], timeout=4)
-        if not ok:
-            return out or "Could not disable hyprtabs"
-    if wm:
-        _run([wm, "layout-set", "float"], timeout=12)
-    return ""
-
 
 _PLUGIN_DIRS = (
     Path.home() / ".local/lib/hyprland/plugins",
     Path("/usr/local/lib/hyprland/plugins"),
     Path("/usr/lib/x86_64-linux-gnu/hyprland/plugins"),
 )
-_PLUGIN_COPY = {
-    "hyprtabs": ("Hyprtabs", "Tabs along the top of windows"),
-}
+_PLUGIN_COPY: dict[str, tuple[str, str]] = {}
 
 
 def _plugin_key(path: Path) -> str:
@@ -260,7 +197,7 @@ def _installed_plugins() -> list[dict[str, str]]:
             continue
         for path in sorted(directory.glob("*.so")):
             key = _plugin_key(path)
-            if not key or key in found or key in {"hyprbars", "hyprframes", "hyprspace"}:
+            if not key or key in found or key in {"hyprbars", "hyprframes", "hyprspace", "hyprtabs"}:
                 continue
             title, desc = _PLUGIN_COPY.get(key, ("", ""))
             if not title:
@@ -272,17 +209,10 @@ def _installed_plugins() -> list[dict[str, str]]:
 
 
 def _plugin_enabled(plugin_id: str) -> bool:
-    prefs = _chrome_prefs()
-    if plugin_id == "hyprtabs":
-        if _plugin_loaded("hyprtabs"):
-            return _hyprtabs_enabled_live()
-        return bool(prefs.get("hyprtabs", False))
     return _plugin_loaded(plugin_id)
 
 
 def _set_plugin(plugin_id: str, path: str, on: bool) -> str:
-    if plugin_id == "hyprtabs":
-        return _set_hyprtabs(on)
     if on:
         if _plugin_loaded(plugin_id):
             return ""
@@ -1816,6 +1746,331 @@ def keyboard_page() -> Gtk.Widget:
     apply.connect("clicked", _apply)
     box.pack_start(apply, False, False, 0)
     box.pack_start(msg, False, False, 0)
+    return box
+
+
+_LAUNCH_PREFIX = "hyprcore-launch "
+_BIND_LINE = re.compile(r"^(bind\w*|unbind)\s*=\s*(.*)$")
+_MODIFIER_KEYS = {
+    "Control_L",
+    "Control_R",
+    "Alt_L",
+    "Alt_R",
+    "Super_L",
+    "Super_R",
+    "Shift_L",
+    "Shift_R",
+    "Meta_L",
+    "Meta_R",
+    "ISO_Level3_Shift",
+    "Caps_Lock",
+    "Num_Lock",
+}
+
+
+def _binds_conf_path() -> Path:
+    for path in (
+        Path.home() / "configs" / "hypr" / "binds-personal.lua",
+        Path.home() / ".config" / "hypr" / "binds-personal.lua",
+    ):
+        if path.is_file():
+            return path
+    return Path.home() / "configs" / "hypr" / "binds-personal.lua"
+
+
+def _parse_bind_line(line: str) -> dict | None:
+    match = _BIND_LINE.match(line.strip())
+    if match is None:
+        return None
+    # Only the first three commas are structural. The command keeps its own.
+    parts = match.group(2).split(",", 3)
+    while len(parts) < 4:
+        parts.append("")
+    mods, key, dispatcher, args = (part.strip() for part in parts)
+    return {
+        "kind": match.group(1),
+        "mods": mods,
+        "key": key,
+        "dispatcher": dispatcher,
+        "args": args,
+    }
+
+
+def _command_from_bind(item: dict) -> str:
+    args = item.get("args") or ""
+    dispatcher = item.get("dispatcher") or ""
+    if dispatcher == "exec" and args.startswith(_LAUNCH_PREFIX):
+        return args[len(_LAUNCH_PREFIX) :].strip()
+    if dispatcher == "exec":
+        return args
+    if dispatcher and args:
+        return f"{dispatcher}, {args}"
+    return dispatcher or args
+
+
+def _format_bind(mods: str, key: str, command: str) -> str:
+    mods = " ".join(mods.split())
+    key = " ".join(key.split())
+    command = command.strip()
+    if command.startswith(_LAUNCH_PREFIX):
+        command = command[len(_LAUNCH_PREFIX) :].strip()
+    return f"bind = {mods}, {key}, exec, hyprcore-launch {command}"
+
+
+def _bind_rows(text: str) -> list[tuple[int, dict]]:
+    rows = []
+    for index, line in enumerate(text.splitlines()):
+        item = _parse_bind_line(line)
+        if item is not None and item["key"]:
+            rows.append((index, item))
+    return rows
+
+
+def shortcuts_page() -> Gtk.Widget:
+    box = _page()
+    path = _binds_conf_path()
+    box.pack_start(
+        _note(
+            "Saved as bind = CHORDS, KEY, exec, hyprcore-launch COMMAND. "
+            "Record ignores Num Lock, so one shortcut works either way."
+        ),
+        False,
+        False,
+        0,
+    )
+    box.pack_start(_note(str(path)), False, False, 0)
+
+    search = Gtk.Entry()
+    search.set_placeholder_text("Filter shortcuts")
+    search.set_hexpand(True)
+    box.pack_start(search, False, False, 0)
+
+    lst = Gtk.ListBox()
+    lst.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    lst.get_style_context().add_class("hyprcore-list")
+    scroll = Gtk.ScrolledWindow()
+    scroll.get_style_context().add_class("hyprcore-list-frame")
+    scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroll.set_size_request(-1, 220)
+    scroll.set_vexpand(True)
+    scroll.add(lst)
+    box.pack_start(scroll, True, True, 0)
+
+    chords = Gtk.Entry()
+    chords.set_text("CTRL SUPER ALT")
+    chords.set_hexpand(True)
+    key = Gtk.Entry()
+    key.set_placeholder_text("backslash")
+    key.set_hexpand(True)
+    command = Gtk.Entry()
+    command.set_placeholder_text("gtk-photos")
+    command.set_hexpand(True)
+    record = _button("Record")
+    form = Gtk.Grid()
+    form.set_column_spacing(8)
+    form.set_row_spacing(8)
+    form.set_margin_top(8)
+
+    def _labeled(row: int, caption: str, widget, extra=None) -> None:
+        cap = Gtk.Label(label=caption, xalign=0.0)
+        cap.set_width_chars(10)
+        form.attach(cap, 0, row, 1, 1)
+        if extra is None:
+            form.attach(widget, 1, row, 2, 1)
+            return
+        slot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        slot.pack_start(widget, True, True, 0)
+        slot.pack_start(extra, False, False, 0)
+        form.attach(slot, 1, row, 2, 1)
+
+    _labeled(0, "Chords", chords)
+    _labeled(1, "Key", key, record)
+    _labeled(2, "Command", command)
+    box.pack_start(form, False, False, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    add = _button("Add")
+    remove = _button("Remove")
+    save = _button("Save")
+    actions.pack_start(add, False, False, 0)
+    actions.pack_start(remove, False, False, 0)
+    actions.pack_start(save, False, False, 0)
+    box.pack_start(actions, False, False, 0)
+    msg = _note("")
+    box.pack_start(msg, False, False, 0)
+
+    state = {"line": None, "capture": False, "loading": False, "rows": []}
+
+    def _read() -> str:
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            msg.set_text(str(exc))
+            return ""
+
+    def _write(text: str) -> bool:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(text, encoding="utf-8")
+            tmp.replace(path)
+        except OSError as exc:
+            msg.set_text(str(exc))
+            return False
+        ok, out = _run(["hyprctl", "reload"], timeout=8)
+        msg.set_text("Saved" if ok else "Saved, reload failed: " + (out or "hyprctl"))
+        return True
+
+    def _selected_index() -> int | None:
+        row = lst.get_selected_row()
+        if row is None:
+            return None
+        return getattr(row, "_line", None)
+
+    def _fill(item: dict | None) -> None:
+        if item is None:
+            chords.set_text("CTRL SUPER ALT")
+            key.set_text("")
+            command.set_text("")
+            return
+        chords.set_text(item["mods"])
+        key.set_text(item["key"])
+        command.set_text(_command_from_bind(item))
+
+    def _refresh(select_line: int | None = None) -> None:
+        state["loading"] = True
+        for child in list(lst.get_children()):
+            lst.remove(child)
+        query = search.get_text().strip().casefold()
+        shown = []
+        for index, item in _bind_rows(_read()):
+            label = f"{item['mods']} + {item['key']}    {_command_from_bind(item)}"
+            if item["kind"] != "bind":
+                label = f"{item['kind']}  {label}"
+            if query and query not in label.casefold():
+                continue
+            row = Gtk.ListBoxRow()
+            row.get_style_context().add_class("hyprcore-list-row")
+            lab = Gtk.Label(label=label, xalign=0.0)
+            lab.set_ellipsize(Pango.EllipsizeMode.END)
+            lab.get_style_context().add_class("hyprcore-row-title")
+            row.add(lab)
+            row._line = index  # type: ignore[attr-defined]
+            row._item = item  # type: ignore[attr-defined]
+            lst.add(row)
+            shown.append(row)
+        lst.show_all()
+        state["rows"] = shown
+        state["loading"] = False
+        if select_line is None:
+            return
+        for row in shown:
+            if getattr(row, "_line", None) == select_line:
+                lst.select_row(row)
+                return
+
+    def _on_select(_lb, row) -> None:
+        if state["loading"] or row is None:
+            return
+        state["line"] = getattr(row, "_line", None)
+        _fill(getattr(row, "_item", None))
+
+    def _add(*_a) -> None:
+        state["line"] = None
+        state["capture"] = False
+        record.set_label("Record")
+        lst.unselect_all()
+        _fill(None)
+        command.grab_focus()
+        msg.set_text("New shortcut")
+
+    def _remove(*_a) -> None:
+        index = _selected_index()
+        if index is None:
+            msg.set_text("Select a shortcut to remove")
+            return
+        lines = _read().splitlines(keepends=True)
+        if index >= len(lines):
+            msg.set_text("That shortcut is no longer in the file")
+            _refresh()
+            return
+        gone = lines[index].strip()
+        del lines[index]
+        if _write("".join(lines)):
+            msg.set_text("Removed " + gone)
+            state["line"] = None
+            _fill(None)
+            _refresh()
+
+    def _save(*_a) -> None:
+        mods = chords.get_text().strip()
+        key_name = key.get_text().strip()
+        cmd = command.get_text().strip()
+        if not mods or not key_name or not cmd:
+            msg.set_text("Chords, key, and command are required")
+            return
+        if "\n" in cmd or "\n" in mods or "\n" in key_name:
+            msg.set_text("Keep each field on one line")
+            return
+        formatted = _format_bind(mods, key_name, cmd) + "\n"
+        lines = _read().splitlines(keepends=True)
+        index = state["line"]
+        if index is None:
+            if lines and not lines[-1].endswith("\n"):
+                lines[-1] = lines[-1] + "\n"
+            lines.append(formatted)
+            index = len(lines) - 1
+        elif index >= len(lines) or _parse_bind_line(lines[index]) is None:
+            msg.set_text("That shortcut is no longer in the file")
+            _refresh()
+            return
+        else:
+            newline = "\n" if lines[index].endswith("\n") else ""
+            lines[index] = formatted.rstrip("\n") + (newline or "\n")
+        if not _write("".join(lines)):
+            return
+        state["line"] = index
+        _refresh(index)
+
+    def _record(*_a) -> None:
+        state["capture"] = True
+        record.set_label("Press keys")
+        key.grab_focus()
+        msg.set_text("Press the shortcut. Num Lock is ignored.")
+
+    def _on_key(_entry, event) -> bool:
+        if not state["capture"]:
+            return False
+        name = str(Gdk.keyval_name(event.keyval) or "")
+        if not name or name in _MODIFIER_KEYS:
+            return True
+        flags = event.state
+        mods = []
+        if flags & Gdk.ModifierType.CONTROL_MASK:
+            mods.append("CTRL")
+        if flags & Gdk.ModifierType.MOD4_MASK:
+            mods.append("SUPER")
+        if flags & Gdk.ModifierType.MOD1_MASK:
+            mods.append("ALT")
+        if flags & Gdk.ModifierType.SHIFT_MASK:
+            mods.append("SHIFT")
+        if len(name) == 1:
+            name = name.upper()
+        chords.set_text(" ".join(mods))
+        key.set_text(name)
+        state["capture"] = False
+        record.set_label("Record")
+        msg.set_text(f"{' '.join(mods)} + {name}")
+        return True
+
+    search.connect("changed", lambda *_a: _refresh(state["line"]))
+    lst.connect("row-selected", _on_select)
+    add.connect("clicked", _add)
+    remove.connect("clicked", _remove)
+    save.connect("clicked", _save)
+    record.connect("clicked", _record)
+    key.connect("key-press-event", _on_key)
+    _refresh()
     return box
 
 

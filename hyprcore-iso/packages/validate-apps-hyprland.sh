@@ -121,7 +121,6 @@ _check "hyprcore-x11-app" "$OVERLAY/usr/local/bin/hyprcore-x11-app"
 _check "hypr-settings" "$OVERLAY/usr/local/bin/hypr-settings"
 _check "hypr-settings desktop" "$OVERLAY/usr/share/applications/hypr-settings.desktop"
 _check "hypr-settings package tree" "$BUILD_ROOT/default/hypr-settings/hyprcore-install.sh"
-_check "hyprcore-ensure-hyprtabs" "$OVERLAY/usr/local/bin/hyprcore-ensure-hyprtabs"
 _check "hyprland.lua (default configs)" "$BUILD_ROOT/default/configs/hypr/hyprland.lua"
 _check "waybar config (default configs)" "$BUILD_ROOT/default/configs/waybar/config"
 _check "hyprcore-waybar-click" "$OVERLAY/usr/local/bin/hyprcore-waybar-click"
@@ -245,35 +244,15 @@ else
 	_fail=$((_fail + 1))
 fi
 
-if grep -q 'def sync_hyprtabs' "$BUILD_ROOT/default/gtk-apps/gtk-theme/python/gtk_theme.py" 2>/dev/null \
-	&& grep -q 'sync_hyprtabs' "$BUILD_ROOT/default/gtk-apps/gtk-theme/python/__init__.py" 2>/dev/null \
-	&& grep -q 'tab_active_color' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
-	&& grep -q 'def pin_tabs_after_click' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null \
-	&& grep -q 'def is_tabs_dialog' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null \
-	&& grep -q 'def is_tabs_overlay' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null \
-	&& grep -q 'wants_tabs() or (not has_hdmi() and wants_tile_default())' "$BUILD_ROOT/default/configs/hypr/window-manager.py" 2>/dev/null; then
-	echo "  OK  hyprtabs GTK colors + tabs WM (pin/dialog vs app/Super=fuzzel)"
+if grep -q 'hyprtabs plugin removed' "$BUILD_ROOT/default/gtk-apps/gtk-theme/python/gtk_theme.py" 2>/dev/null \
+	&& ! grep -q 'hl.plugin.hyprtabs' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
+	&& ! grep -q 'hyprcore-ensure-hyprtabs' "$BUILD_ROOT/default/configs/hypr/hyprland.lua" 2>/dev/null \
+	&& [[ ! -e "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprtabs.hook.chroot" ]] \
+	&& [[ ! -e "$OVERLAY/usr/local/bin/hyprcore-ensure-hyprtabs" ]]; then
+	echo "  OK  hyprtabs plugin removed (theme stub + no ISO hook/helper)"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  sync_hyprtabs, hyprland tab colors, or tabs WM helpers"
-	_fail=$((_fail + 1))
-fi
-
-# Packages/hyprtabs is compiled in hook 998 — ensure source has cursor z-order + overlays.
-_ht_pkg=""
-[[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprtabs/main.cpp" ]] && _ht_pkg="${LINUXOS_PACKAGES}/hyprtabs"
-[[ -z "$_ht_pkg" && -f "$BUILD_ROOT/../Packages/hyprtabs/main.cpp" ]] && _ht_pkg="$(cd "$BUILD_ROOT/../Packages/hyprtabs" && pwd)"
-if [[ -n "$_ht_pkg" ]] \
-	&& grep -q 'RENDER_POST_WINDOWS' "$_ht_pkg/main.cpp" 2>/dev/null \
-	&& grep -q 'windowIsOverlay' "$_ht_pkg/tabsBar.cpp" 2>/dev/null \
-	&& grep -q 'tab-select' "$_ht_pkg/tabsBar.cpp" 2>/dev/null \
-	&& grep -q 'focusLockOnActiveDesktop' "$_ht_pkg/tabsBar.cpp" 2>/dev/null \
-	&& grep -q 'titleLooksLikeDialog' "$_ht_pkg/tabsBar.cpp" 2>/dev/null \
-	&& grep -q 'windowIsCompactFloat' "$_ht_pkg/tabsBar.cpp" 2>/dev/null; then
-	echo "  OK  Packages/hyprtabs (POST_WINDOWS, overlays, tab-select, ws-safe hover, dialog titles)"
-	_ok=$((_ok + 1))
-else
-	echo "  MISSING  Packages/hyprtabs render/overlay/tab-select/ws-safe hover/dialog-title updates"
+	echo "  MISSING  hyprtabs still wired into theme/ISO/hyprland.lua"
 	_fail=$((_fail + 1))
 fi
 
@@ -611,13 +590,12 @@ if [[ -d "$_pers_hypr" ]]; then
 fi
 
 _def_hypr="$BUILD_ROOT/default/configs/hypr/hyprland.lua"
-if grep -q 'hyprtabs' "$_def_hypr" 2>/dev/null \
-	&& grep -q 'hyprtabs' "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprtabs.hook.chroot" 2>/dev/null \
-	&& [[ -f "$BUILD_ROOT/../Packages/hyprtabs/Makefile" ]]; then
-	echo "  OK  hyprtabs staged for ISO (hyprland.lua + hook 998 + sibling source)"
+if ! grep -q 'hl.plugin.hyprtabs\|hyprcore-ensure-hyprtabs' "$_def_hypr" 2>/dev/null \
+	&& [[ ! -e "$ISO_ROOT/overlay/hooks/normal/998-hyprcore-hyprtabs.hook.chroot" ]]; then
+	echo "  OK  hyprtabs absent from default hyprland.lua and ISO hooks"
 	_ok=$((_ok + 1))
 else
-	echo "  MISSING  hyprtabs ISO wiring (hyprland.lua, hook 998, or ../Packages/hyprtabs)"
+	echo "  FAIL  hyprtabs still present in default hyprland.lua or ISO hooks"
 	_fail=$((_fail + 1))
 fi
 if grep -qE 'xdg_tag = "popup"|match:xdg_tag popup, border_size 0' "$_def_hypr" 2>/dev/null; then
@@ -686,7 +664,6 @@ _smoke_run "Layer B: gtk-term" "gtk-term --help" 2
 _smoke_run "Layer B: gtk-image" "gtk-image --help" 2
 _smoke_run "Layer B: gtk-video" "gtk-video --help" 2
 _smoke_run "Layer B: gtk-calc" "gtk-calc --help" 2
-_smoke_run "hyprtabs helper" "test -x /usr/local/bin/hyprcore-ensure-hyprtabs"
 _smoke_run "native: fuzzel" "fuzzel --version"
 _smoke_run "hypr-settings" "test -x /usr/local/bin/hypr-settings"
 

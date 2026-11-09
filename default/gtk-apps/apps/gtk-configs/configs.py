@@ -60,15 +60,21 @@ class ConfigsApp(Gtk.Application):
 
     def do_activate(self):
         if not self.root.is_dir():
-            dialog = Gtk.AlertDialog()
-            dialog.set_message("Configs root not found")
-            dialog.set_detail(
-                f"{self.root}\n\nCreate ~/configs or pass --root PATH "
-                "(e.g. ~/configs)."
-            )
-            dialog.set_modal(True)
-            dialog.set_buttons(["OK"])
-            dialog.choose(None, None, lambda *_: self.quit())
+            try:
+                import gtk_theme
+
+                gtk_theme.present_buttons(
+                    None,
+                    "Configs root not found",
+                    f"{self.root}\n\nCreate ~/configs or pass --root PATH "
+                    "(e.g. ~/configs).",
+                    ["OK"],
+                    default_idx=0,
+                    cancel_idx=0,
+                    callback=lambda *_: self.quit(),
+                )
+            except Exception:
+                self.quit()
             return
         self.store.load_all()
         win = ConfigsWindow(self, self.store)

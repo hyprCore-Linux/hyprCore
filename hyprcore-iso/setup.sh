@@ -322,6 +322,26 @@ if [[ -d "$_gtk_apps/bin" ]]; then
   # Stock gtk-apps theme.toml lives in default/configs/gtk-apps/ (→ ~/configs via merge).
   # Do not write ~/.config/gtk-apps here; merge-personalize-dropins creates the symlink.
   echo "Staged default/gtk-apps (suite + gtk-theme-editor + gtk-theme data + gtk-sync + MIME defaults) into includes.chroot"
+
+  # Prefer monorepo Packages/gtk-apps overlays so ISO matches the workstation Packages tree.
+  if [[ -n "${LINUXOS_PACKAGES:-}" && -d "${LINUXOS_PACKAGES}/gtk-apps" ]]; then
+    _pkg_gtk="${LINUXOS_PACKAGES}/gtk-apps"
+    if [[ -d "$_pkg_gtk/gtk-theme" ]]; then
+      _theme_share="$BUILD_ROOT/config/includes.chroot/usr/share/hyprcore/gtk-theme"
+      mkdir -p "$_theme_share"
+      cp -a "$_pkg_gtk/gtk-theme/." "$_theme_share/"
+      # Keep lib copy used by some suite imports in sync with share.
+      mkdir -p "$_gtk_lib/gtk-theme"
+      cp -a "$_pkg_gtk/gtk-theme/." "$_gtk_lib/gtk-theme/"
+      echo "Overlaid Packages/gtk-apps/gtk-theme → share + lib"
+    fi
+    if [[ -d "$_pkg_gtk/gtk-configs" ]]; then
+      mkdir -p "$_gtk_lib/apps"
+      rm -rf "$_gtk_lib/apps/gtk-configs"
+      cp -a "$_pkg_gtk/gtk-configs" "$_gtk_lib/apps/gtk-configs"
+      echo "Overlaid Packages/gtk-apps/gtk-configs → lib/apps/gtk-configs"
+    fi
+  fi
 fi
 
 # hypr-settings — system settings GUI (Wi‑Fi / BT / Displays / Sound / …)
@@ -331,32 +351,6 @@ if [[ -x "$_hypr_settings/hyprcore-install.sh" ]]; then
   DESTDIR="$BUILD_ROOT/config/includes.chroot" "$_hypr_settings/hyprcore-install.sh"
 fi
 
-# hyprCore hyprtabs (bottom-of-screen window tabs) — compiled in hook 998.
-_hyprtabs=""
-if [[ -n "${LINUXOS_PACKAGES:-}" && -f "${LINUXOS_PACKAGES}/hyprtabs/Makefile" ]]; then
-  _hyprtabs="${LINUXOS_PACKAGES}/hyprtabs"
-fi
-[[ -n "${_hyprtabs}" ]] || _hyprtabs="$(cd "$REPO_ROOT/../Packages/hyprtabs" 2>/dev/null && pwd || true)"
-if [[ -n "${_hyprtabs}" && -f "${_hyprtabs}/Makefile" ]]; then
-  _ht_src="$BUILD_ROOT/config/includes.chroot/usr/src/hyprcore/hyprtabs"
-  rm -rf "$_ht_src"
-  mkdir -p "$_ht_src"
-  shopt -s nullglob
-  for _f in "${_hyprtabs}"/*.cpp "${_hyprtabs}"/*.hpp \
-            "${_hyprtabs}/Makefile" "${_hyprtabs}/VERSION" \
-            "${_hyprtabs}/README.md"; do
-    [[ -f "$_f" ]] || continue
-    cp -a "$_f" "$_ht_src/"
-  done
-  shopt -u nullglob
-  if [[ -d "${_hyprtabs}/third_party/hyprutils-0.13" ]]; then
-    mkdir -p "$_ht_src/third_party"
-    cp -a "${_hyprtabs}/third_party/hyprutils-0.13" "$_ht_src/third_party/"
-  fi
-  echo "Staged Packages/hyprtabs → usr/src/hyprcore/hyprtabs"
-else
-  echo "WARNING: Packages/hyprtabs not found — ISO will not build libhyprtabs.so" >&2
-fi
 
 # crontab.conf: personalize/configs/crontab wins over default/configs/crontab → /usr/share/hyprcore/crontab.conf
 _crontab="$(hyprcore_resolve_file "$REPO_ROOT/default/configs/crontab" "$PERSONALIZE/configs/crontab" "crontab.conf" || true)"

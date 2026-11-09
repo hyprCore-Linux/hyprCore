@@ -885,157 +885,33 @@ def select_theme(
 
 
 def sync_desktop_theme(profile: Optional[Profile] = None) -> bool:
-    """Force-reset hyprtabs + Waybar / mako / fuzzel / system GTK dialog colors."""
+    """Force-reset Waybar / mako / fuzzel / system GTK dialog colors."""
     profile = profile or load_profile()
-    sync_hyprbars(profile)
-    sync_hyprtabs(profile)
     sync_shell_chrome(profile)
     return True
 
 
 def sync_hyprbars(profile: Optional[Profile] = None) -> bool:
-    """Hyprbars is not used. Older callers still refresh hyprtabs from here."""
-    profile = profile or load_profile()
-    return sync_hyprtabs(profile)
+    """Hyprbars / hyprtabs are not used."""
+    return True
 
 
 def sync_hyprtabs(profile: Optional[Profile] = None) -> bool:
-    """Push GTK suite colors into plugin:hyprtabs (capsule, text, active pill)."""
-    profile = profile or load_profile()
-    return sync_hyprtabs_colors(
-        profile.surface_hex(),
-        profile.background,
-        profile.foreground,
-        chrome=profile.chrome,
-    )
+    """hyprtabs plugin removed."""
+    return True
 
 
 def sync_hyprtabs_colors(
     surface_hex: str,
     background_hex: str,
-    text_hex: str,
-    chrome: Optional[WindowChrome] = None,
+    foreground_hex: str,
+    *,
+    chrome: Optional[dict] = None,
 ) -> bool:
-    ch = chrome or WindowChrome()
-    # Capsule ≈ Waybar: panel bg at ~75% alpha (50% vanished into dark wallpapers).
-    bar_rgba = _hex_to_hypr_rgba(background_hex, "c0")
-    text_rgb = _hex_to_hypr_rgb(text_hex)
-    # Active pill ≈ Waybar selected module: foreground fill, background label.
-    active_hex = text_hex
-    active_rgba = _hex_to_hypr_rgba(active_hex, "ff")
-    active_text_hex = (
-        background_hex if _relative_luminance(background_hex) < 0.45 else "#111111"
-    )
-    # If fg is dark (light theme), invert: surface pill + fg text.
-    if _relative_luminance(active_hex) < 0.45:
-        active_hex = _mix_hex(surface_hex, "#ffffff", 0.55)
-        if _relative_luminance(active_hex) < 0.35:
-            active_hex = _mix_hex(surface_hex, "#ffffff", 0.72)
-        active_rgba = _hex_to_hypr_rgba(active_hex, "ff")
-        active_text_hex = text_hex
-    active_text_rgb = _hex_to_hypr_rgb(active_text_hex)
-    if not bar_rgba or not text_rgb or not active_rgba or not active_text_rgb:
-        return False
-    font = _chrome_bar_font(ch)
-
-    path = _hyprland_conf_path()
-    if path is not None and path.is_file():
-        try:
-            original = path.read_text(encoding="utf-8")
-        except OSError:
-            original = None
-        if original is not None:
-            out = _rewrite_hyprtabs_assigns(
-                original,
-                {
-                    "bar_color": bar_rgba,
-                    "col.text": text_rgb,
-                    "tab_active_color": active_rgba,
-                    "tab_active_text_color": active_text_rgb,
-                    "bar_text_font": font,
-                },
-            )
-            if out != original:
-                try:
-                    path.write_text(out, encoding="utf-8")
-                except OSError:
-                    pass
-
-    if not _theme_session_safe():
-        _hyprctl_keyword("plugin:hyprtabs:bar_color", bar_rgba)
-        _hyprctl_keyword("plugin:hyprtabs:col.text", text_rgb)
-        _hyprctl_keyword("plugin:hyprtabs:tab_active_color", active_rgba)
-        _hyprctl_keyword("plugin:hyprtabs:tab_active_text_color", active_text_rgb)
-        _hyprctl_keyword("plugin:hyprtabs:bar_text_font", font)
+    """hyprtabs plugin removed."""
     return True
 
 
-def _rewrite_hyprtabs_assigns(text: str, assigns: dict[str, str]) -> str:
-    """Set keys inside `hyprtabs { ... }` (.conf) or `hl.plugin.hyprtabs = { ... }` (.lua)."""
-    lua = "hl.plugin.hyprtabs" in text
-    lines = text.splitlines(keepends=True)
-    out: list[str] = []
-    in_tabs = False
-    depth = 0
-    seen: set[str] = set()
-    insert_indent = "    " if lua else "        "
-
-    def _fmt(key: str, value: str) -> str:
-        if not lua:
-            return f"{key} = {value}"
-        # Lua string values; dotted keys need bracket form.
-        if "." in key:
-            return f'["{key}"] = "{value}"'
-        return f'{key} = "{value}"'
-
-    def _line_key(trimmed: str) -> str | None:
-        for key in assigns:
-            if lua and "." in key:
-                pref = f'["{key}"]'
-                if trimmed.startswith(pref):
-                    return key
-            if trimmed.startswith(f"{key} =") or trimmed.startswith(f"{key}="):
-                return key
-        return None
-
-    for line in lines:
-        bare = line.rstrip("\r\n")
-        trimmed = bare.lstrip()
-        indent = bare[: len(bare) - len(trimmed)]
-        start = (
-            trimmed.startswith("hl.plugin.hyprtabs")
-            if lua
-            else trimmed.startswith("hyprtabs")
-        )
-        if not in_tabs and start:
-            in_tabs = True
-            depth = 0
-            seen = set()
-            out.append(line)
-            if "{" in trimmed:
-                depth += trimmed.count("{") - trimmed.count("}")
-            continue
-        if in_tabs:
-            depth += trimmed.count("{") - trimmed.count("}")
-            if depth <= 0:
-                nl = line[len(bare) :] or "\n"
-                for key, value in assigns.items():
-                    if key not in seen:
-                        out.append(f"{insert_indent}{_fmt(key, value)}{nl}")
-                in_tabs = False
-                out.append(line)
-                continue
-            key = _line_key(trimmed)
-            if key is not None:
-                nl = line[len(bare) :] or "\n"
-                out.append(f"{indent}{_fmt(key, assigns[key])}{nl}")
-                seen.add(key)
-                insert_indent = indent or insert_indent
-            else:
-                out.append(line)
-            continue
-        out.append(line)
-    return "".join(out)
 
 
 def sync_hyprbars_colors(

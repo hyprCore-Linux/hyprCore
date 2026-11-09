@@ -82,7 +82,8 @@ rm -f /etc/lightdm/lightdm.conf.d/50-hyprcore-live-autologin.conf \
 rm -rf /usr/local/lib/hyprcore/services/screensaver \
 	/usr/local/lib/hyprcore/services/gtksync \
 	/usr/local/lib/hyprcore/services/remux \
-	/usr/local/lib/hyprcore/services/activeuser 2>/dev/null || true
+	/usr/local/lib/hyprcore/services/activeuser \
+	/usr/local/lib/hyprcore/services/ydotoolremote 2>/dev/null || true
 rm -f /etc/systemd/system/remux.service \
 	/etc/systemd/system/multi-user.target.wants/remux.service 2>/dev/null || true
 if command -v systemctl >/dev/null 2>&1; then
@@ -132,7 +133,6 @@ rm -f /usr/local/bin/hyprcore-settings \
 	/usr/local/bin/hyprcore-ensure-power-manager \
 	/usr/local/bin/hyprcore-overview-defaults \
 	/usr/local/bin/hyprcore-overview-toggle \
-	/usr/local/bin/hyprcore-ensure-hyprtabs \
 	/usr/local/bin/hyprcore-session-action 2>/dev/null || true
 
 _strip_desktop_configs_from() {
@@ -153,7 +153,9 @@ _strip_desktop_configs_from() {
 		"${root}/.config/systemd/user/active-user.service" \
 		"${root}/.config/systemd/user/default.target.wants/active-user.service" \
 		"${root}/.config/systemd/user/ydotool.service" \
-		"${root}/.config/systemd/user/default.target.wants/ydotool.service" 2>/dev/null || true
+		"${root}/.config/systemd/user/default.target.wants/ydotool.service" \
+		"${root}/.config/systemd/user/ydotool-remote.service" \
+		"${root}/.config/systemd/user/default.target.wants/ydotool-remote.service" 2>/dev/null || true
 	rm -rf "${root}/.config/active-user" \
 		"${root}/.config/systemd/user/graphical-session.target.wants" 2>/dev/null || true
 	rm -f "${root}/.config/mimeapps.list" \

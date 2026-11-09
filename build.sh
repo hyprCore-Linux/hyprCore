@@ -16,6 +16,7 @@ MANIFEST_LIB="${ISO_DIR}/packages/manifest-lib.sh"
 # Generated lists live under /tmp (HYPRCORE_LIST_DIR), not hyprcore-iso/overlay/.
 MANIFEST="${REPO_ROOT}/default/install-list"
 STAGING_SH="${REPO_ROOT}/share/hyprcore-build-staging.sh"
+SYNC_PACKAGES_SH="${REPO_ROOT}/share/sync-packages-into-default.sh"
 
 # Sourced at top level so the parser's arrays stay global, not function-local.
 if [[ -r "$MANIFEST_LIB" ]]; then
@@ -321,6 +322,11 @@ main() {
 
 	if [[ ! -r "$STAGING_SH" ]]; then
 		_die "Missing build staging helper: share/hyprcore-build-staging.sh"
+	fi
+	# Keep default/gtk-apps aligned with monorepo Packages/ (Lua-aware theme/configs).
+	if [[ -x "$SYNC_PACKAGES_SH" ]]; then
+		_info "Syncing Packages/gtk-apps into default/ …"
+		"$SYNC_PACKAGES_SH" || _warn "Packages sync reported a problem (continuing)."
 	fi
 	# shellcheck source=share/hyprcore-build-staging.sh
 	source "$STAGING_SH"

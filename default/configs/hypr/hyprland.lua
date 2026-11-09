@@ -290,18 +290,6 @@ hl.bind(mod .. " + mouse:273", hl.dsp.window.resize())
 hl.bind("mouse:273", hl.dsp.exec_cmd("hyprcore-desktop-rmb"), { non_consuming = true })
 
 
--- hyprtabs plugin options (binary loaded by hyprcore-ensure-hyprtabs).
--- Off until Themes → Hyprtabs / layout toggle "tabs" enables the plugin.
--- Colors refreshed live by gtk-theme (stock defaults match black chrome).
-hl.plugin.hyprtabs = {
-    enabled = false,
-    exclusive = true,
-    bar_color = "rgba(000000c0)",
-    ["col.text"] = "rgb(ffffff)",
-    tab_active_color = "rgba(ffffffff)",
-    tab_active_text_color = "rgb(000000)",
-    bar_text_font = "DejaVu Sans",
-}
 
 hl.window_rule({
     match = {
@@ -690,8 +678,6 @@ hl.config({
     -- Media keys
     -- =============================================================================
     -- Right-click empty desktop → wallpaper picker (bindn: apps still receive RMB)
-    -- Screen-top window tabs (opt-in via Themes → Window chrome / hyprcore-window-chrome.json).
-    -- hyprcore-ensure-hyprtabs also loads libhyprtabs.so when hyprtabs prefs are on.
     -- Float some utilities (dialogs stay centered, not stretched edge-to-edge)
     -- Meld diffs need the whole monitor, not the area under the bar.
     -- Calamares: keep branding windowSize (avoid nearly-fullscreen float)
@@ -708,6 +694,5 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("/usr/share/hyprcore/hyprcore-hyprland-session-start.sh")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
-    hl.exec_cmd("hyprcore-ensure-hyprtabs")
 end)
 

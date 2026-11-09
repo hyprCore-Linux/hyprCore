@@ -101,16 +101,7 @@ def wants_tabs() -> bool:
 
 
 def hyprtabs_strip_visible() -> bool:
-    if layout_mode() == "tabs":
-        return True
-    try:
-        if os.path.isfile(CHROME_PREFS):
-            with open(CHROME_PREFS, encoding="utf-8") as fh:
-                raw = json.load(fh) or {}
-            if isinstance(raw, dict) and raw.get("hyprtabs"):
-                return True
-    except Exception:
-        pass
+    """hyprtabs plugin removed — strip never visible."""
     return False
 
 
@@ -190,7 +181,7 @@ def _pin_geometry(addr: str, x: int, y: int, w: int, h: int) -> None:
 
 
 def pin_tabs_after_click(focus_addr: str) -> None:
-    """Pin siblings to the usable main-monitor rect after a hyprtabs capsule click."""
+    """Pin siblings to the usable main-monitor rect (tabs layout helper)."""
     want = focus_addr if str(focus_addr).startswith("0x") else f"0x{focus_addr}"
     try:
         mon = main_monitor()
@@ -223,16 +214,9 @@ def pin_tabs_after_click(focus_addr: str) -> None:
             pass
 
 
-def _set_hyprtabs_enabled(enabled: bool) -> None:
-    hyprctl("keyword", "plugin:hyprtabs:enabled", "true" if enabled else "false")
-
-
 def apply_layout_mode() -> None:
-    mode = layout_mode()
-    if mode == "tabs":
-        _set_hyprtabs_enabled(True)
-    elif not hyprtabs_strip_visible():
-        _set_hyprtabs_enabled(False)
+    """Layout mode prefs only — hyprtabs plugin removed."""
+    return
 
 
 def layout_set(mode: str) -> None:

@@ -76,6 +76,7 @@ def main() -> int:
         HubSection("displays", "Displays", "video-display", page=pages.displays_page, group="Devices"),
         HubSection("sound", "Sound", "audio-volume-high", page=pages.sound_page, group="Devices"),
         HubSection("keyboard", "Keyboard", "input-keyboard", page=pages.keyboard_page, group="Devices"),
+        HubSection("shortcuts", "Shortcuts", "input-keyboard", page=pages.shortcuts_page, group="Devices"),
         HubSection("datetime", "Date & Time", "x-office-calendar", _clock, group="Time"),
         HubSection("weather", "Weather", "weather-few-clouds", page=pages.weather_page, group="Time"),
         HubSection("apps", "Apps", "preferences-desktop-default-applications", page=pages.apps_page, group="Apps"),
@@ -122,8 +123,10 @@ def main() -> int:
         "date-time": "datetime",
         "forecast": "weather",
         "plugin": "plugins",
-        "hyprtabs": "plugins",
         "chrome": "plugins",
+        "binds": "shortcuts",
+        "shortcut": "shortcuts",
+        "keybinds": "shortcuts",
     }
     section = aliases.get(section, section)
     show_hub(sections, section, drill)

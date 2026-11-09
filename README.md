@@ -557,7 +557,6 @@ Notable areas:
 | `996` **`.disabled`** | Chrome on live |
 | `996` | **linux-image/headers** from trixie-backports |
 | `997` | **Hyprland 0.56.2** (snapshot) + sid hyprpaper/xdph |
-| `998` | hyprtabs plugin |
 | `999` | Icon cache + perms |
 | `1000` | `x-www-browser` alternatives |
 | `1001` | `x-terminal-emulator` → gtk-term |
@@ -865,7 +864,6 @@ Do not add extra icons here — only this file is copied by the build scripts. `
 | 996 | Google Chrome — **disabled** on slim live (Calamares Desktop only) |
 | 996 | linux-image/headers from trixie-backports |
 | 997 | Hyprland 0.56.2 (snapshot) + sid hyprpaper/xdph |
-| 998 | hyprtabs |
 | 999 | Papirus yellow folders + icon cache + script permissions |
 | 1000 | x-www-browser alternative (Chrome if present) |
 | 1001 | x-terminal-emulator → gtk-term |

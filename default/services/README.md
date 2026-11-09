@@ -16,5 +16,6 @@ Each `<name>/` → `/usr/local/lib/hyprcore/services/<name>/`. Chroot hook
 | gtksync | desktop | Waybar `custom/gtk-sync` status/menu for gtk-sync-client |
 | screensaver | desktop | GTK4 idle screensaver (`hyprcore-screensaver-idle` user unit) |
 
-KvNix desktop personalize adds remux and activeuser (desktop) plus hostreporter
-(both profiles). See `personalize.example/services/` for the drop-in contract.
+KvNix and hyprDeck desktop personalize add remux, activeuser, and ydotoolremote
+(desktop) plus hostreporter (both profiles). ydotoolremote is the port 24810
+listener. See `personalize.example/services/` for the drop-in contract.

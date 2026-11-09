@@ -157,10 +157,6 @@ elif command -v xfce4-power-manager >/dev/null 2>&1; then
 	xfce4-power-manager --daemon &
 fi
 
-# Screen-top tabs when hyprtabs prefs are on.
-if [ -x /usr/local/bin/hyprcore-ensure-hyprtabs ]; then
-	/usr/local/bin/hyprcore-ensure-hyprtabs &
-fi
 
 # Re-apply float / tile / tabs layout once Hyprland answers (tabs needs the strip).
 (
