@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Stock hyprCore window helper (hyprtabs + layout prefs).
+"""Stock hyprCore window helper (layout prefs + tab pin helpers).
 
 Named-output parking (HDMI desks, DP portraits, overview grid, Spectros/SORT
 chords) lives in personalize/configs/hypr/window-manager.py and overlays this
 file. Stock hyprland.lua does not bind parking keys; session-start may call
-`layout-apply`, and hyprtabs may call `tab-select`.
+`layout-apply`, and leftover tab helpers may call `tab-select`.
+
+Hyprland 0.56+ with a Lua config requires `hyprctl dispatch` to receive
+`hl.dsp.*` dispatcher objects — classic `setfloating` / `movewindowpixel`
+strings fail. Stock `dispatch()` translates those for Lua configs.
 """
 
 from __future__ import annotations
@@ -39,11 +43,122 @@ def hypr_json(request: str) -> Any:
         return [] if request.endswith("s") else {}
 
 
-def dispatch(name: str, arg: str = "") -> None:
-    if arg:
-        hyprctl("dispatch", name, arg)
-    else:
-        hyprctl("dispatch", name)
+def _lua_str(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _lua_window(sel: str | None) -> str:
+    if not sel:
+        return ""
+    sel = sel.strip()
+    if not sel:
+        return ""
+    if sel.startswith(
+        (
+            "address:",
+            "class:",
+            "title:",
+            "pid:",
+            "initialclass:",
+            "initialtitle:",
+            "tag:",
+        )
+    ):
+        return f", window = {_lua_str(sel)}"
+    if sel.startswith("0x"):
+        return f", window = {_lua_str('address:' + sel)}"
+    return f", window = {_lua_str(sel)}"
+
+
+def _split_csv_window(arg: str) -> tuple[str, str | None]:
+    arg = (arg or "").strip()
+    if not arg:
+        return "", None
+    if "," in arg:
+        left, right = arg.rsplit(",", 1)
+        right = right.strip()
+        left = left.strip()
+        if right.startswith(
+            (
+                "address:",
+                "class:",
+                "title:",
+                "pid:",
+                "initialclass:",
+                "initialtitle:",
+                "tag:",
+                "0x",
+            )
+        ):
+            return left, right
+    return arg, None
+
+
+def legacy_dispatch_expr(name: str, arg: str = "") -> str:
+    """Map classic hyprctl dispatchers to Hyprland 0.56 Lua `hl.dsp.*` forms."""
+    name = (name or "").strip()
+    arg = (arg or "").strip()
+
+    if name in ("setfloating", "togglefloating"):
+        action = "toggle" if name == "togglefloating" else "on"
+        return f"hl.dsp.window.float({{ action = {_lua_str(action)}{_lua_window(arg or None)} }})"
+
+    if name == "settiled":
+        return f'hl.dsp.window.float({{ action = "off"{_lua_window(arg or None)} }})'
+
+    if name in ("movewindowpixel", "moveactive"):
+        payload, win = _split_csv_window(arg)
+        relative = True
+        coords = payload
+        if payload.startswith("exact "):
+            relative = False
+            coords = payload[len("exact ") :].strip()
+        parts = coords.split()
+        if len(parts) < 2:
+            raise ValueError(f"bad movewindowpixel arg: {arg!r}")
+        x, y = parts[0], parts[1]
+        return (
+            f"hl.dsp.window.move({{ x = {x}, y = {y}, "
+            f"relative = {'true' if relative else 'false'}{_lua_window(win)} }})"
+        )
+
+    if name in ("resizewindowpixel", "resizeactive"):
+        payload, win = _split_csv_window(arg)
+        relative = True
+        coords = payload
+        if payload.startswith("exact "):
+            relative = False
+            coords = payload[len("exact ") :].strip()
+        parts = coords.split()
+        if len(parts) < 2:
+            raise ValueError(f"bad resizewindowpixel arg: {arg!r}")
+        x, y = parts[0], parts[1]
+        return (
+            f"hl.dsp.window.resize({{ x = {x}, y = {y}, "
+            f"relative = {'true' if relative else 'false'}{_lua_window(win)} }})"
+        )
+
+    if name == "alterzorder":
+        payload, win = _split_csv_window(arg)
+        mode = payload or "top"
+        if win is None and arg in ("top", "bottom"):
+            mode = arg
+        return f"hl.dsp.window.alter_zorder({{ mode = {_lua_str(mode)}{_lua_window(win)} }})"
+
+    if name == "focuswindow":
+        if not arg:
+            return "hl.dsp.focus({})"
+        return f"hl.dsp.focus({{ {_lua_window(arg).lstrip(', ').strip()} }})"
+
+    if name.startswith("hl.dsp.") or name.startswith("hl."):
+        return name if "(" in name or not arg else f"{name}({arg})"
+
+    raise ValueError(f"unsupported legacy dispatcher under Lua config: {name!r} {arg!r}")
+
+
+def dispatch(name: str, arg: str = "") -> str:
+    expr = legacy_dispatch_expr(name, arg)
+    return hyprctl("dispatch", expr).strip()
 
 
 def layout_mode_path() -> str:
