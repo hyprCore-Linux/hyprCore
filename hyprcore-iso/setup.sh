@@ -360,6 +360,30 @@ if [[ -n "${_crontab:-}" ]]; then
   echo "Staged crontab.conf → usr/share/hyprcore/crontab.conf"
 fi
 
+# Server ISO only: refresh MariaDB seeds from the live box before they are
+# copied into the image. Desktop overlays skip this. Set
+# HYPRCORE_SKIP_DB_REFRESH=1 to build with the dumps already on disk.
+_server_overlay=0
+if [[ -f "$PERSONALIZE/metadata/debian.env" ]] && grep -qE '^[[:space:]]*HYPRCORE_LIVE_HOSTNAME=.*server' "$PERSONALIZE/metadata/debian.env"; then
+  _server_overlay=1
+fi
+_pers_base="$(basename "$(readlink -f "$PERSONALIZE" 2>/dev/null || true)")"
+if [[ "$_pers_base" == *server* ]]; then
+  _server_overlay=1
+fi
+if [[ "$_server_overlay" -eq 1 ]]; then
+  _db_refresh="$PERSONALIZE/configs/DB/refresh-from-live.sh"
+  if [[ "${HYPRCORE_SKIP_DB_REFRESH:-0}" == "1" ]]; then
+    echo "Skipping live MariaDB refresh (HYPRCORE_SKIP_DB_REFRESH=1)"
+  elif [[ ! -f "$_db_refresh" ]]; then
+    echo "ERROR: server ISO build needs $_db_refresh" >&2
+    exit 1
+  else
+    echo "Refreshing MariaDB seeds from the live server…"
+    bash "$_db_refresh"
+  fi
+fi
+
 # Personalize drop-ins: browser-extensions / configs / services / gtk-apps
 # (default/configs + default/services merge even without personalize/)
 _merge_dropins="$REPO_ROOT/share/merge-personalize-dropins.sh"
