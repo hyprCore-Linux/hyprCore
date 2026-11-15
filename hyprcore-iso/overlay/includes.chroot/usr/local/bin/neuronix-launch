@@ -1,0 +1,3 @@
+#!/bin/sh
+# Compat: neuronix → hyprcore rename
+exec /usr/local/bin/hyprcore-launch "$@"

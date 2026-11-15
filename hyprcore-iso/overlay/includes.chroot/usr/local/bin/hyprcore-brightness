@@ -1,0 +1,35 @@
+#!/bin/sh
+# Brightness change with the same SwayOSD meter used for volume.
+# Usage: hyprcore-brightness +5 | -5 | raise | lower
+set -eu
+arg="${1:-+5}"
+
+case "$arg" in
+raise)
+	arg="+5"
+	;;
+lower)
+	arg="-5"
+	;;
+esac
+
+if command -v swayosd-client >/dev/null 2>&1; then
+	swayosd-client --brightness "$arg" && exit 0
+fi
+
+# Fallback when SwayOSD is unavailable (server not running / package missing).
+if ! command -v brightnessctl >/dev/null 2>&1; then
+	echo "hyprcore-brightness: need swayosd-client or brightnessctl" >&2
+	exit 1
+fi
+case "$arg" in
++*)
+	brightnessctl set "${arg#+}"%+ >/dev/null
+	;;
+-*)
+	brightnessctl set "${arg#-}"%- >/dev/null
+	;;
+*)
+	brightnessctl set "${arg}%" >/dev/null
+	;;
+esac

@@ -10,7 +10,39 @@ fi
 
 if command -v hyprctl >/dev/null 2>&1 \
 	&& [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-	exec hyprctl dispatch exec -- "$@"
+	# hyprland-lua parses `hyprctl dispatch exec <cmd>` as Lua
+	# (`hl.dispatch(exec <cmd>)`) and rejects it: "')' expected".
+	# Call the lua dispatcher with a quoted command instead.
+	exec python3 - "$@" <<'PY'
+import json, os, shlex, subprocess, sys
+
+argv = sys.argv[1:]
+wm = os.path.expanduser("~/configs/hypr/window-manager.py")
+if os.path.isfile(wm):
+    plan = subprocess.run(
+        [sys.executable, wm, "launch-plan", *argv],
+        capture_output=True,
+        text=True,
+    )
+    line = (plan.stdout or "").strip()
+    if plan.returncode == 0 and line == "focused":
+        raise SystemExit(0)
+    if plan.returncode == 0 and line.startswith("run "):
+        try:
+            argv = json.loads(line[4:])
+        except json.JSONDecodeError:
+            argv = sys.argv[1:]
+
+shell = " ".join(shlex.quote(a) for a in argv)
+lua = (
+    shell.replace("\\", "\\\\")
+    .replace('"', '\\"')
+    .replace("\n", "\\n")
+    .replace("\r", "\\r")
+)
+code = 'hl.dsp.exec_cmd("' + lua + '")'
+raise SystemExit(subprocess.call(["hyprctl", "dispatch", code]))
+PY
 fi
 
 exec "$@"

@@ -279,8 +279,8 @@ hl.bind("ALT + " .. mod .. " + 8", hl.dsp.exec_cmd("$HOME/.config/hypr/scripts/c
 hl.bind(mod .. " + ALT + equal", hl.dsp.exec_cmd("$HOME/.config/hypr/scripts/cursor-zoom.sh in"))
 hl.bind(mod .. " + ALT + minus", hl.dsp.exec_cmd("$HOME/.config/hypr/scripts/cursor-zoom.sh out"))
 
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set 5%+"))
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"))
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("hyprcore-brightness +5"))
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("hyprcore-brightness -5"))
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("hyprcore-volume +5"))
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("hyprcore-volume -5"))
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("hyprcore-volume mute-toggle"))
