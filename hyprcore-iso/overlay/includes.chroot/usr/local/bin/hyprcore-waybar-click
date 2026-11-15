@@ -101,24 +101,7 @@ case "${1:-}" in
 		_settings wifi
 		;;
 	battery)
-		power="$(_find_bin hyprcore-power-settings || true)"
-		if [ -n "${power:-}" ]; then
-			if command -v systemd-run >/dev/null 2>&1; then
-				systemd-run --user --collect --quiet \
-					--property=KillMode=process \
-					--setenv="HYPRCORE_CLICK_XY=${HYPRCORE_CLICK_XY:-}" \
-					--setenv="PATH=${PATH}" \
-					--setenv="WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-}" \
-					--setenv="XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}" \
-					--setenv="HYPRLAND_INSTANCE_SIGNATURE=${HYPRLAND_INSTANCE_SIGNATURE:-}" \
-					--setenv="DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}" \
-					--setenv="HOME=${HOME}" \
-					-- "$power"
-				exit 0
-			fi
-			exec "$power"
-		fi
-		_settings system
+		_settings power
 		;;
 	datetime | clock | calendar)
 		_settings datetime calendar
@@ -138,8 +121,8 @@ case "${1:-}" in
 	memory | ram | mem)
 		_settings system
 		;;
-	power | session)
-		_settings power
+	power | session | logout | reboot | shutdown)
+		_settings session
 		;;
 	*)
 		echo "hyprcore-waybar-click: unknown action '${1:-}'" >&2

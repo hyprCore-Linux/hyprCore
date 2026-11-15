@@ -1596,6 +1596,619 @@ def screensaver_page() -> Gtk.Widget:
     return box
 
 
+# --- xfce4-power-manager (xfconf) helpers ---------------------------------
+
+_XFPM_CHANNEL = "xfce4-power-manager"
+_XFPM_PREFIX = "/xfce4-power-manager/"
+
+# XfpmShutdownRequest (common/xfpm-enum-glib.h) — order matters.
+_XFPM_SHUTDOWN = (
+    (0, "Do nothing"),
+    (1, "Suspend"),
+    (2, "Hibernate"),
+    (3, "Ask"),
+    (4, "Shut down"),
+    (5, "Hybrid sleep"),
+)
+
+# XfpmLidTriggerAction — order matters.
+_XFPM_LID = (
+    (0, "Blank display"),
+    (1, "Suspend"),
+    (2, "Hibernate"),
+    (3, "Lock screen"),
+    (4, "Do nothing"),
+    (5, "Hybrid sleep"),
+    (6, "Shut down"),
+)
+
+# Common inactivity / DPMS minute choices (0 = Never).
+_XFPM_MINUTES = (
+    (0, "Never"),
+    (1, "1 minute"),
+    (2, "2 minutes"),
+    (3, "3 minutes"),
+    (5, "5 minutes"),
+    (10, "10 minutes"),
+    (15, "15 minutes"),
+    (20, "20 minutes"),
+    (30, "30 minutes"),
+    (45, "45 minutes"),
+    (60, "1 hour"),
+)
+
+
+def _xfpm_get(name: str, default: str = "") -> str:
+    path = name if name.startswith("/") else f"{_XFPM_PREFIX}{name}"
+    ok, out = _run(["xfconf-query", "-c", _XFPM_CHANNEL, "-p", path], timeout=3)
+    if not ok:
+        return default
+    return (out or "").strip()
+
+
+def _xfpm_get_int(name: str, default: int = 0) -> int:
+    raw = _xfpm_get(name, "")
+    if not raw:
+        return default
+    try:
+        return int(float(raw.split()[0]))
+    except (TypeError, ValueError, IndexError):
+        return default
+
+
+def _xfpm_get_bool(name: str, default: bool = False) -> bool:
+    raw = _xfpm_get(name, "").lower()
+    if raw in ("true", "1", "yes", "on"):
+        return True
+    if raw in ("false", "0", "no", "off"):
+        return False
+    return default
+
+
+def _xfpm_set(name: str, typ: str, value) -> None:
+    path = name if name.startswith("/") else f"{_XFPM_PREFIX}{name}"
+    argv = [
+        "xfconf-query",
+        "-c",
+        _XFPM_CHANNEL,
+        "-p",
+        path,
+        "-n",
+        "-t",
+        typ,
+        "-s",
+        str(value),
+    ]
+    ok, _out = _run(argv, timeout=3)
+    if ok:
+        return
+    _run(
+        ["xfconf-query", "-c", _XFPM_CHANNEL, "-p", path, "-t", typ, "-s", str(value)],
+        timeout=3,
+    )
+
+
+def _ensure_power_manager() -> None:
+    for name in ("hyprcore-ensure-power-manager", "neuronix-ensure-power-manager"):
+        path = name
+        for candidate in (
+            Path.home() / ".local/bin" / name,
+            Path("/usr/local/bin") / name,
+            Path("/usr/bin") / name,
+        ):
+            if candidate.is_file():
+                path = str(candidate)
+                break
+        ok, _ = _run([path], timeout=8)
+        if ok or Path(path).is_file():
+            return
+
+
+def _can_suspend() -> bool:
+    ok, out = _run(
+        [
+            "busctl",
+            "--system",
+            "get-property",
+            "org.freedesktop.login1",
+            "/org/freedesktop/login1",
+            "org.freedesktop.login1.Manager",
+            "CanSuspend",
+        ],
+        timeout=3,
+    )
+    if ok and "yes" in out.lower():
+        return True
+    try:
+        return "mem" in Path("/sys/power/state").read_text(encoding="utf-8").split()
+    except OSError:
+        return True
+
+
+def _can_hibernate() -> bool:
+    ok, out = _run(
+        [
+            "busctl",
+            "--system",
+            "get-property",
+            "org.freedesktop.login1",
+            "/org/freedesktop/login1",
+            "org.freedesktop.login1.Manager",
+            "CanHibernate",
+        ],
+        timeout=3,
+    )
+    if ok and "yes" in out.lower():
+        return True
+    try:
+        return "disk" in Path("/sys/power/state").read_text(encoding="utf-8").split()
+    except OSError:
+        return False
+
+
+def _has_lid() -> bool:
+    lid = Path("/proc/acpi/button/lid")
+    return lid.is_dir() and any(lid.iterdir())
+
+
+def _brightness_pct() -> int:
+    ok, out = _run(["brightnessctl", "-m", "info"], timeout=3)
+    if ok and out:
+        # device,class,current,percent%,max
+        parts = out.split(",")
+        if len(parts) >= 4:
+            try:
+                return int(parts[3].rstrip("%"))
+            except ValueError:
+                pass
+    ok, out = _run(["brightnessctl", "get"], timeout=3)
+    ok2, mx = _run(["brightnessctl", "max"], timeout=3)
+    try:
+        cur = int((out or "0").split()[0])
+        top = int((mx or "1").split()[0]) or 1
+        return max(0, min(100, int(round(100.0 * cur / top))))
+    except (TypeError, ValueError, IndexError):
+        return 0
+
+
+def _set_brightness_pct(pct: int) -> None:
+    pct = max(0, min(100, int(pct)))
+    _run(["brightnessctl", "set", f"{pct}%"], timeout=3)
+
+
+def _combo_row(label: str, choices: list[tuple[int, str]], current: int, on_pick) -> Gtk.Box:
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    row.get_style_context().add_class("hyprcore-pref-row")
+    cap = Gtk.Label(label=label, xalign=0.0)
+    cap.set_hexpand(True)
+    combo = Gtk.ComboBoxText()
+    values = [val for val, _lab in choices]
+    for _val, lab in choices:
+        combo.append_text(lab)
+    if current in values:
+        combo.set_active(values.index(current))
+    else:
+        combo.append_text(str(current))
+        values.append(current)
+        combo.set_active(len(values) - 1)
+    armed = {"ok": False}
+
+    def _changed(widget: Gtk.ComboBoxText) -> None:
+        if not armed["ok"]:
+            return
+        idx = widget.get_active()
+        if idx < 0 or idx >= len(values):
+            return
+        on_pick(values[idx])
+
+    combo.connect("changed", _changed)
+
+    def _arm() -> bool:
+        armed["ok"] = True
+        return False
+
+    GLib.idle_add(_arm)
+    row.pack_start(cap, True, True, 0)
+    row.pack_end(combo, False, False, 0)
+    return row
+
+
+def _filter_shutdown_choices(include_ask: bool = True) -> list[tuple[int, str]]:
+    can_s = _can_suspend()
+    can_h = _can_hibernate()
+    out: list[tuple[int, str]] = []
+    for val, lab in _XFPM_SHUTDOWN:
+        if val == 1 and not can_s:
+            continue
+        if val == 2 and not can_h:
+            continue
+        if val == 5 and not (can_s and can_h):
+            continue
+        if val == 3 and not include_ask:
+            continue
+        out.append((val, lab))
+    return out or [(0, "Do nothing")]
+
+
+def _filter_lid_choices() -> list[tuple[int, str]]:
+    can_s = _can_suspend()
+    can_h = _can_hibernate()
+    out: list[tuple[int, str]] = []
+    for val, lab in _XFPM_LID:
+        if val == 1 and not can_s:
+            continue
+        if val == 2 and not can_h:
+            continue
+        if val == 5 and not (can_s and can_h):
+            continue
+        out.append((val, lab))
+    return out or [(4, "Do nothing")]
+
+
+def _session_action(action: str) -> None:
+    helper = "hyprcore-session-action"
+    for candidate in (
+        Path.home() / ".local/bin" / "hyprcore-session-action",
+        Path("/usr/local/bin") / "hyprcore-session-action",
+        Path.home() / ".local/bin" / "neuronix-session-action",
+        Path("/usr/local/bin") / "neuronix-session-action",
+    ):
+        if candidate.is_file():
+            helper = str(candidate)
+            break
+    try:
+        quick._launch_detached([helper, action])
+    except Exception:
+        _run([helper, action], timeout=4)
+    GLib.idle_add(Gtk.main_quit)
+
+
+def power_page() -> Gtk.Widget:
+    """Battery, brightness, xfce4-power-manager prefs, and session actions."""
+    box = _page()
+    GLib.idle_add(lambda: (_ensure_power_manager(), False)[1])
+
+    # --- Battery ------------------------------------------------------------
+    box.pack_start(_section("Battery"), False, False, 0)
+    bat_status = _note("")
+    bat_detail = _note("")
+    box.pack_start(bat_status, False, False, 0)
+    box.pack_start(bat_detail, False, False, 0)
+    profile_note = _note("")
+    box.pack_start(profile_note, False, False, 0)
+    profile_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    profile_btns: dict[str, Gtk.Button] = {}
+    for name in ("power-saver", "balanced", "performance"):
+        btn = _button(name)
+        profile_btns[name] = btn
+
+        def _set_profile(_b, n=name) -> None:
+            _run(["powerprofilesctl", "set", n], timeout=4)
+            _refresh_battery()
+
+        btn.connect("clicked", _set_profile)
+        profile_row.pack_start(btn, False, False, 0)
+    box.pack_start(profile_row, False, False, 0)
+
+    def _refresh_battery() -> None:
+        supply = Path("/sys/class/power_supply")
+        bats = sorted(p for p in supply.glob("BAT*") if p.is_dir()) if supply.is_dir() else []
+        if not bats:
+            bat_status.set_text("No battery. This machine is on external power.")
+            bat_detail.set_text("")
+            profile_note.set_text("")
+            profile_row.set_sensitive(False)
+            return
+        profile_row.set_sensitive(True)
+        bat = bats[0]
+
+        def _read(name: str) -> str:
+            try:
+                return (bat / name).read_text(encoding="utf-8").strip()
+            except OSError:
+                return ""
+
+        cap = _read("capacity") or "—"
+        state = _read("status") or "—"
+        bat_status.set_text(f"{bat.name}  ·  {cap}%  ·  {state}")
+        now = _read("energy_now") or _read("charge_now")
+        full = _read("energy_full") or _read("charge_full")
+        bat_detail.set_text(f"Charge {now} / {full}" if now and full else "")
+        ok, profile = _run(["powerprofilesctl", "get"], timeout=3)
+        if ok and profile:
+            profile_note.set_text(f"Power profile: {profile}")
+            for name, btn in profile_btns.items():
+                ctx = btn.get_style_context()
+                if name == profile:
+                    ctx.add_class("hyprcore-primary")
+                    ctx.remove_class("hyprcore-secondary")
+                else:
+                    ctx.add_class("hyprcore-secondary")
+                    ctx.remove_class("hyprcore-primary")
+        else:
+            profile_note.set_text("")
+            profile_row.hide()
+
+    _refresh_battery()
+
+    def _poll_battery() -> bool:
+        if not box.get_mapped():
+            return False
+        _refresh_battery()
+        return True
+
+    GLib.timeout_add_seconds(15, _poll_battery)
+
+    # --- Brightness ---------------------------------------------------------
+    box.pack_start(_section("Brightness"), False, False, 0)
+    bright_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    bright_row.get_style_context().add_class("hyprcore-pref-row")
+    bright_lbl = Gtk.Label(label=f"{_brightness_pct()}%", xalign=1.0)
+    bright_lbl.set_width_chars(4)
+    bright_lbl.get_style_context().add_class("hyprcore-subtitle")
+    scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+    scale.set_draw_value(False)
+    scale.set_hexpand(True)
+    scale.get_style_context().add_class("hyprcore-scale")
+    scale.set_value(_brightness_pct())
+    armed_bright = {"ok": False}
+
+    def _on_bright(s: Gtk.Scale) -> None:
+        if not armed_bright["ok"]:
+            return
+        pct = int(round(s.get_value()))
+        bright_lbl.set_text(f"{pct}%")
+        _set_brightness_pct(pct)
+
+    scale.connect("value-changed", _on_bright)
+    GLib.idle_add(lambda: (armed_bright.update(ok=True), False)[1])
+    bright_row.pack_start(scale, True, True, 0)
+    bright_row.pack_start(bright_lbl, False, False, 0)
+    box.pack_start(bright_row, False, False, 0)
+
+    # --- Buttons & lid ------------------------------------------------------
+    box.pack_start(_section("Buttons & lid"), False, False, 0)
+    shutdown_choices = _filter_shutdown_choices(include_ask=True)
+    lid_choices = _filter_lid_choices()
+    box.pack_start(
+        _combo_row(
+            "When the power button is pressed",
+            shutdown_choices,
+            _xfpm_get_int("power-button-action", 3),
+            lambda v: _xfpm_set("power-button-action", "uint", v),
+        ),
+        False,
+        False,
+        0,
+    )
+    if _has_lid():
+        box.pack_start(
+            _combo_row(
+                "When the lid is closed on battery",
+                lid_choices,
+                _xfpm_get_int("lid-action-on-battery", 1),
+                lambda v: _xfpm_set("lid-action-on-battery", "uint", v),
+            ),
+            False,
+            False,
+            0,
+        )
+        box.pack_start(
+            _combo_row(
+                "When the lid is closed on AC",
+                lid_choices,
+                _xfpm_get_int("lid-action-on-ac", 4),
+                lambda v: _xfpm_set("lid-action-on-ac", "uint", v),
+            ),
+            False,
+            False,
+            0,
+        )
+    box.pack_start(
+        _switch_row(
+            "Status notifications",
+            _xfpm_get_bool("general-notification", True),
+            lambda on: _xfpm_set("general-notification", "bool", "true" if on else "false"),
+        ),
+        False,
+        False,
+        0,
+    )
+    box.pack_start(
+        _switch_row(
+            "System tray icon",
+            _xfpm_get_bool("show-tray-icon", False),
+            lambda on: _xfpm_set("show-tray-icon", "bool", "true" if on else "false"),
+        ),
+        False,
+        False,
+        0,
+    )
+
+    # --- System power saving ------------------------------------------------
+    box.pack_start(_section("System power saving"), False, False, 0)
+    sleep_mode_choices = [
+        c for c in _filter_shutdown_choices(include_ask=False) if c[0] in (1, 2, 5)
+    ] or [(1, "Suspend")]
+    box.pack_start(
+        _combo_row(
+            "On battery — sleep when inactive for",
+            list(_XFPM_MINUTES),
+            _xfpm_get_int("inactivity-on-battery", 0),
+            lambda v: _xfpm_set("inactivity-on-battery", "uint", v),
+        ),
+        False,
+        False,
+        0,
+    )
+    box.pack_start(
+        _combo_row(
+            "On battery — system sleep mode",
+            sleep_mode_choices,
+            _xfpm_get_int("inactivity-sleep-mode-on-battery", 1),
+            lambda v: _xfpm_set("inactivity-sleep-mode-on-battery", "uint", v),
+        ),
+        False,
+        False,
+        0,
+    )
+    box.pack_start(
+        _combo_row(
+            "On AC — sleep when inactive for",
+            list(_XFPM_MINUTES),
+            _xfpm_get_int("inactivity-on-ac", 0),
+            lambda v: _xfpm_set("inactivity-on-ac", "uint", v),
+        ),
+        False,
+        False,
+        0,
+    )
+    box.pack_start(
+        _combo_row(
+            "On AC — system sleep mode",
+            sleep_mode_choices,
+            _xfpm_get_int("inactivity-sleep-mode-on-ac", 1),
+            lambda v: _xfpm_set("inactivity-sleep-mode-on-ac", "uint", v),
+        ),
+        False,
+        False,
+        0,
+    )
+
+    crit = max(1, min(70, _xfpm_get_int("critical-power-level", 10)))
+    crit_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    crit_row.get_style_context().add_class("hyprcore-pref-row")
+    crit_cap = Gtk.Label(label="Critical battery power level", xalign=0.0)
+    crit_cap.set_hexpand(True)
+    crit_spin = Gtk.SpinButton.new_with_range(1, 70, 1)
+    crit_spin.set_value(crit)
+    armed_crit = {"ok": False}
+
+    def _on_crit(spin: Gtk.SpinButton) -> None:
+        if not armed_crit["ok"]:
+            return
+        _xfpm_set("critical-power-level", "uint", int(spin.get_value()))
+
+    crit_spin.connect("value-changed", _on_crit)
+    GLib.idle_add(lambda: (armed_crit.update(ok=True), False)[1])
+    crit_row.pack_start(crit_cap, True, True, 0)
+    crit_row.pack_end(crit_spin, False, False, 0)
+    box.pack_start(crit_row, False, False, 0)
+    box.pack_start(
+        _combo_row(
+            "On critical battery power",
+            _filter_shutdown_choices(include_ask=True),
+            _xfpm_get_int("critical-power-action", 0),
+            lambda v: _xfpm_set("critical-power-action", "uint", v),
+        ),
+        False,
+        False,
+        0,
+    )
+    box.pack_start(
+        _switch_row(
+            "Lock screen when system is going to sleep",
+            _xfpm_get_bool("lock-screen-suspend-hibernate", True),
+            lambda on: _xfpm_set(
+                "lock-screen-suspend-hibernate", "bool", "true" if on else "false"
+            ),
+        ),
+        False,
+        False,
+        0,
+    )
+
+    # --- Display ------------------------------------------------------------
+    box.pack_start(_section("Display"), False, False, 0)
+    box.pack_start(
+        _switch_row(
+            "Handle display power management (DPMS)",
+            _xfpm_get_bool("dpms-enabled", True),
+            lambda on: _xfpm_set("dpms-enabled", "bool", "true" if on else "false"),
+        ),
+        False,
+        False,
+        0,
+    )
+    for label, key, typ in (
+        ("On battery — blank after", "blank-on-battery", "int"),
+        ("On battery — put display to sleep after", "dpms-on-battery-sleep", "uint"),
+        ("On battery — switch display off after", "dpms-on-battery-off", "uint"),
+        ("On AC — blank after", "blank-on-ac", "int"),
+        ("On AC — put display to sleep after", "dpms-on-ac-sleep", "uint"),
+        ("On AC — switch display off after", "dpms-on-ac-off", "uint"),
+        ("On battery — reduce brightness after", "brightness-inactivity-on-battery", "uint"),
+        ("On AC — reduce brightness after", "brightness-inactivity-on-ac", "uint"),
+    ):
+        box.pack_start(
+            _combo_row(
+                label,
+                list(_XFPM_MINUTES),
+                _xfpm_get_int(key, 0),
+                lambda v, k=key, t=typ: _xfpm_set(k, t, v),
+            ),
+            False,
+            False,
+            0,
+        )
+
+    for label, key in (
+        ("On battery — reduce brightness to", "brightness-level-on-battery"),
+        ("On AC — reduce brightness to", "brightness-level-on-ac"),
+    ):
+        level = max(1, min(100, _xfpm_get_int(key, 100)))
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.get_style_context().add_class("hyprcore-pref-row")
+        cap = Gtk.Label(label=label, xalign=0.0)
+        cap.set_hexpand(True)
+        pct = Gtk.Label(label=f"{level}%", xalign=1.0)
+        pct.set_width_chars(4)
+        pct.get_style_context().add_class("hyprcore-subtitle")
+        sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 100, 1)
+        sc.set_draw_value(False)
+        sc.set_hexpand(True)
+        sc.get_style_context().add_class("hyprcore-scale")
+        sc.set_value(level)
+        armed = {"ok": False}
+
+        def _on_level(s: Gtk.Scale, k=key, lab=pct, gate=armed) -> None:
+            if not gate["ok"]:
+                return
+            val = int(round(s.get_value()))
+            lab.set_text(f"{val}%")
+            _xfpm_set(k, "uint", val)
+
+        sc.connect("value-changed", _on_level)
+        GLib.idle_add(lambda gate=armed: (gate.update(ok=True), False)[1])
+        row.pack_start(cap, False, False, 0)
+        row.pack_start(sc, True, True, 0)
+        row.pack_start(pct, False, False, 0)
+        box.pack_start(row, False, False, 0)
+
+    return box
+
+
+def session_page() -> Gtk.Widget:
+    """Log out, reboot, and shut down."""
+    box = _page()
+    box.pack_start(_note("End this session or power off the computer."), False, False, 0)
+    for action, label, desc in (
+        ("logout", "Log Out", "End this session"),
+        ("reboot", "Reboot", "Restart this computer"),
+        ("shutdown", "Shut Down", "Power off this computer"),
+    ):
+        row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        btn = _button(label)
+        btn.set_halign(Gtk.Align.FILL)
+        btn.set_hexpand(True)
+        btn.connect("clicked", lambda *_a, a=action: _session_action(a))
+        hint = _note(desc)
+        row.pack_start(btn, False, False, 0)
+        row.pack_start(hint, False, False, 0)
+        box.pack_start(row, False, False, 0)
+    return box
+
+
 def system_page() -> Gtk.Widget:
     box = _page()
     os_name = platform.system()
@@ -1663,8 +2276,6 @@ def system_page() -> Gtk.Widget:
         row.pack_start(val, True, True, 0)
         box.pack_start(row, False, False, 0)
 
-    box.pack_start(_section("Battery"), False, False, 0)
-    _pack_battery(box)
     box.pack_start(_section("CPU"), False, False, 0)
     quick.pack_cpu_controls(
         box, quit_on_advanced=False, compact=True, include_btop=False, framed=False

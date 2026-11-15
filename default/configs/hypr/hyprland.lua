@@ -285,8 +285,12 @@ hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("hyprcore-volume +5"))
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("hyprcore-volume -5"))
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("hyprcore-volume mute-toggle"))
 
-hl.bind(mod .. " + mouse:272", hl.dsp.window.drag())
-hl.bind(mod .. " + mouse:273", hl.dsp.window.resize())
+-- Super+left-drag moves / Super+right-drag resizes. Hyprland 0.56 Lua needs
+-- { mouse = true } (bindm); without it the binds register but do not drag.
+-- Needed for Chromium/web apps and root X11 tools (Synaptic/GParted) whose
+-- titlebars often cannot start an interactive move.
+hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 hl.bind("mouse:273", hl.dsp.exec_cmd("hyprcore-desktop-rmb"), { non_consuming = true })
 
 

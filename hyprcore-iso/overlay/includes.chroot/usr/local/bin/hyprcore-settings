@@ -90,7 +90,8 @@ def main() -> int:
         HubSection("sync", "GTK-Sync", "emblem-synchronizing", _sync, group="Tools"),
         HubSection("system", "System", "preferences-system", page=pages.system_page),
         HubSection("about", "About", "help-about", page=pages.about_page),
-        HubSection("power", "Power", "system-shutdown", lambda: _plain(quick.power_items())),
+        HubSection("power", "Power", "preferences-system-power", page=pages.power_page),
+        HubSection("session", "Session", "system-shutdown", page=pages.session_page),
     ]
     section = (sys.argv[1] if len(sys.argv) > 1 else "wifi").strip().lower()
     drill = (sys.argv[2] if len(sys.argv) > 2 else "").strip().lower()
@@ -101,11 +102,14 @@ def main() -> int:
         "network": "wifi",
         "nm": "wifi",
         "cpu": "system",
-        "battery": "system",
+        "battery": "power",
         "memory": "system",
         "ram": "system",
         "mem": "system",
-        "session": "power",
+        "logout": "session",
+        "reboot": "session",
+        "shutdown": "session",
+        "poweroff": "session",
         "calendar": "datetime",
         "clock": "datetime",
         "gtk-sync": "sync",

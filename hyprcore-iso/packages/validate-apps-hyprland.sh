@@ -140,17 +140,15 @@ if grep -q '"custom/power"' "$BUILD_ROOT/default/configs/waybar/config" 2>/dev/n
 	&& grep -q 'hyprcore-waybar-click power' "$BUILD_ROOT/default/configs/waybar/config" 2>/dev/null \
 	&& grep -q '#custom-power' "$BUILD_ROOT/default/configs/waybar/style.css" 2>/dev/null \
 	&& grep -qE 'power \| session' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null \
-	&& grep -q 'def show_power_panel' "$OVERLAY/usr/share/hyprcore/hyprcore_quick_settings.py" 2>/dev/null \
-	&& grep -q 'DrillItem("logout"' "$OVERLAY/usr/share/hyprcore/hyprcore_quick_settings.py" 2>/dev/null \
-	&& grep -q 'DrillItem("reboot"' "$OVERLAY/usr/share/hyprcore/hyprcore_quick_settings.py" 2>/dev/null \
-	&& grep -q 'DrillItem("shutdown"' "$OVERLAY/usr/share/hyprcore/hyprcore_quick_settings.py" 2>/dev/null \
+	&& grep -q '_settings session' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null \
 	&& grep -q 'def show_hub' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null \
 	&& grep -q '_hub sound' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null \
 	&& [[ -x "$OVERLAY/usr/local/bin/hyprcore-settings" ]] \
+	&& grep -q 'HubSection("session"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
 	&& grep -qE '^[[:space:]]*logout\)' "$OVERLAY/usr/local/bin/hyprcore-session-action" 2>/dev/null \
 	&& grep -qE '^[[:space:]]*reboot\)' "$OVERLAY/usr/local/bin/hyprcore-session-action" 2>/dev/null \
 	&& grep -qE '^[[:space:]]*shutdown(\|poweroff)?\)' "$OVERLAY/usr/local/bin/hyprcore-session-action" 2>/dev/null; then
-	echo "  OK  Waybar power icon → centered Log Out / Reboot / Shut Down dialog"
+	echo "  OK  Waybar power icon → Session (Log Out / Reboot / Shut Down)"
 	_ok=$((_ok + 1))
 else
 	echo "  MISSING  Waybar custom/power (default config + overlay click/session helpers)"
@@ -315,11 +313,40 @@ if grep -q 'hyprcore-nav-group' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dia
 	&& grep -q 'hyprcore-page-body' "$OVERLAY/usr/share/hyprcore/hyprcore_choice_dialog.py" 2>/dev/null \
 	&& grep -q 'HubSection("system"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
 	&& grep -q 'HubSection("about"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
-	&& grep -q 'HubSection("power"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null; then
+	&& grep -q 'HubSection("power"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& grep -q 'HubSection("session"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null; then
 	echo "  OK  settings grouped nav, Flatpak, software log/uninstall, done dialog"
 	_ok=$((_ok + 1))
 else
 	echo "  MISSING  settings grouped nav / Flatpak / software finish UI in overlay"
+	_fail=$((_fail + 1))
+fi
+
+if grep -q 'def power_page' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
+	&& grep -q 'def _xfpm_get' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
+	&& grep -q 'def _xfpm_set' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
+	&& grep -q 'lid-action-on-battery' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
+	&& grep -q 'page=pages.power_page' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& grep -q 'preferences-system-power' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& grep -q '"battery": "power"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& ! grep -q 'lambda: _plain(quick.power_items())' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null; then
+	echo "  OK  Power page (xfce4-power-manager prefs)"
+	_ok=$((_ok + 1))
+else
+	echo "  MISSING  Power settings page / hub wiring in overlay"
+	_fail=$((_fail + 1))
+fi
+
+if grep -q 'def session_page' "$OVERLAY/usr/share/hyprcore/hyprcore_settings_pages.py" 2>/dev/null \
+	&& grep -q 'page=pages.session_page' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& grep -q 'HubSection("session"' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& grep -q 'system-shutdown' "$OVERLAY/usr/local/bin/hyprcore-settings" 2>/dev/null \
+	&& grep -q '_settings session' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null \
+	&& grep -q '_settings power' "$OVERLAY/usr/local/bin/hyprcore-waybar-click" 2>/dev/null; then
+	echo "  OK  Session page (Log Out / Reboot / Shut Down) at hub bottom"
+	_ok=$((_ok + 1))
+else
+	echo "  MISSING  Session settings page / hub wiring in overlay"
 	_fail=$((_fail + 1))
 fi
 
