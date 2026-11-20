@@ -1997,7 +1997,7 @@ def power_page() -> Gtk.Widget:
             _combo_row(
                 "When the lid is closed on AC",
                 lid_choices,
-                _xfpm_get_int("lid-action-on-ac", 4),
+                _xfpm_get_int("lid-action-on-ac", 1),
                 lambda v: _xfpm_set("lid-action-on-ac", "uint", v),
             ),
             False,

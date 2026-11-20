@@ -12,6 +12,7 @@ HYPRLAND_RUNTIME=(
 	hyprland-guiutils
 	hyprpaper
 	hyprpicker
+	hyprlock
 	xdg-desktop-portal-hyprland
 	ydotool
 )

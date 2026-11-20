@@ -15,7 +15,7 @@ fi
 
 _skip() {
 	case "$1" in
-		hyprland|hyprpaper|hyprpicker|xdg-desktop-portal-hyprland|hyprland-guiutils|ydotool|google-chrome-stable)
+		hyprland|hyprpaper|hyprpicker|hyprlock|xdg-desktop-portal-hyprland|hyprland-guiutils|ydotool|google-chrome-stable)
 			return 0
 			;;
 		*) return 1 ;;

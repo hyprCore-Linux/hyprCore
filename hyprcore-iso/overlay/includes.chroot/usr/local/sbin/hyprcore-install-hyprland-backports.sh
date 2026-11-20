@@ -7,7 +7,7 @@
 # - hyprland / hyprland-dev: 0.56.2+ds-3 from snapshot.debian.org
 # - hyprpaper: 0.8.4-1~bpo13+1 from the same snapshot era
 #   (sid 0.8.5 aborts with "free(): invalid pointer" against Hyprland 0.56.2)
-# - xdph / guiutils / hyprpicker: from unstable (low pin priority)
+# - xdph / guiutils / hyprpicker / hyprlock: from unstable (low pin priority)
 # Kernel is handled separately by hyprcore-install-kernel-latest.sh.
 set -euo pipefail
 
@@ -153,10 +153,11 @@ _install_stack() {
 		xdg-desktop-portal-hyprland \
 		hyprland-guiutils \
 		hyprpicker \
+		hyprlock \
 		ydotool
 
 	_log "versions:"
-	dpkg -l hyprland hyprpaper xdg-desktop-portal-hyprland hyprland-guiutils hyprpicker \
+	dpkg -l hyprland hyprpaper xdg-desktop-portal-hyprland hyprland-guiutils hyprpicker hyprlock \
 		| awk '/^ii/{print "  "$2" "$3}'
 }
 

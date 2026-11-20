@@ -19,6 +19,14 @@ _set() {
 		|| true
 }
 
+_set_default() {
+	_path="$1"
+	_type="$2"
+	_val="$3"
+	xfconf-query -c xfce4-power-manager -p "${_path}" >/dev/null 2>&1 && return 0
+	_set "${_path}" "${_type}" "${_val}"
+}
+
 # 0 = Never for timeouts / “reduce after”
 _set /xfce4-power-manager/dpms-enabled bool true
 _set /xfce4-power-manager/dpms-on-ac-sleep uint 0
@@ -33,8 +41,16 @@ _set /xfce4-power-manager/brightness-on-ac uint 0
 _set /xfce4-power-manager/brightness-on-battery uint 0
 _set /xfce4-power-manager/brightness-inactivity-on-ac uint 0
 _set /xfce4-power-manager/brightness-inactivity-on-battery uint 0
-_set /xfce4-power-manager/brightness-level-on-ac uint 100
 _set /xfce4-power-manager/brightness-level-on-battery uint 100
+_set /xfce4-power-manager/brightness-level-on-ac uint 100
+# Lid close suspends. Only fill these in when unset, so a later Settings change sticks.
+_set_default /xfce4-power-manager/lid-action-on-battery uint 1
+_set_default /xfce4-power-manager/lid-action-on-ac uint 1
+_set_default /xfce4-power-manager/logind-handle-lid-switch bool false
+# Screen lock is hyprlock. xfpm reads this from the xfce4-session channel.
+xfconf-query -c xfce4-session -p /general/LockCommand -n -t string -s /usr/bin/hyprlock 2>/dev/null \
+	|| xfconf-query -c xfce4-session -p /general/LockCommand -t string -s /usr/bin/hyprlock 2>/dev/null \
+	|| true
 
 if ! pgrep -x xfce4-power-man >/dev/null 2>&1 && ! pgrep -f '[x]fce4-power-manager' >/dev/null 2>&1; then
 	xfce4-power-manager --daemon >/dev/null 2>&1 &

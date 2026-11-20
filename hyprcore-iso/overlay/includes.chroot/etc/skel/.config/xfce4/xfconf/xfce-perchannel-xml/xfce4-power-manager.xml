@@ -3,6 +3,10 @@
 <channel name="xfce4-power-manager" version="1.0">
   <property name="xfce4-power-manager" type="empty">
     <property name="power-button-action" type="uint" value="3"/>
+    <!-- 1 = Suspend. xfpm handles the lid (logind-handle-lid-switch stays false). -->
+    <property name="lid-action-on-battery" type="uint" value="1"/>
+    <property name="lid-action-on-ac" type="uint" value="1"/>
+    <property name="logind-handle-lid-switch" type="bool" value="false"/>
     <property name="dpms-enabled" type="bool" value="true"/>
     <property name="dpms-on-ac-sleep" type="uint" value="0"/>
     <property name="dpms-on-ac-off" type="uint" value="0"/>

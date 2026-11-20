@@ -170,7 +170,7 @@ hl.bind("CTRL + SUPER + Super_R", hl.dsp.exec_cmd("hyprcore-fuzzel"), { release 
 hl.bind(mod .. " + A", hl.dsp.exec_cmd("hyprcore-fuzzel"))
 hl.bind(mod .. " + V", hl.dsp.exec_cmd("makoctl restore"))
 hl.bind(mod .. " + M", hl.dsp.exec_cmd("makoctl dismiss --all"))
-hl.bind(mod .. " + L", hl.dsp.exec_cmd("dm-tool lock"))
+hl.bind(mod .. " + L", hl.dsp.exec_cmd("hyprlock"))
 hl.bind("ALT + F2", hl.dsp.exec_cmd("hyprcore-fuzzel"))
 hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("hyprcore-launch nwg-bar"))
 
