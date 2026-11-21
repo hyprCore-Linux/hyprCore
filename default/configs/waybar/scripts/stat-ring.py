@@ -172,11 +172,11 @@ def main(argv: list[str]) -> int:
     if kind == "cpu":
         pct = _cpu_percent(out_dir / "cpu.state")
         tooltip = f"CPU {pct:.0f}%"
-        icon = "\uf2db"
+        icon = "\uf4bc"
         muted = False
     elif kind == "memory":
         pct, tooltip = _mem_percent()
-        icon = "\uf1c0"
+        icon = "\uefc5"
         muted = False
     else:
         pct, muted, tooltip = _volume()

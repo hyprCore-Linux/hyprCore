@@ -690,12 +690,20 @@ def _attach_wifi_list(
             heading = Gtk.Label(label=title, xalign=0.0)
             heading.get_style_context().add_class("hyprcore-row-title")
             heading.set_ellipsize(Pango.EllipsizeMode.END)
+            title_line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            if _needs_password(net["security"]):
+                lock = Gtk.Image.new_from_icon_name("system-lock-screen-symbolic", Gtk.IconSize.MENU)
+                lock.set_tooltip_text(net["security"])
+                lock.set_valign(Gtk.Align.CENTER)
+                lock.get_style_context().add_class("hyprcore-row-desc")
+                title_line.pack_start(lock, False, False, 0)
+            title_line.pack_start(heading, True, True, 0)
             detail = Gtk.Label(
                 label=f"{net['signal']}%  ·  {net['security']}",
                 xalign=0.0,
             )
             detail.get_style_context().add_class("hyprcore-row-desc")
-            inner.pack_start(heading, False, False, 0)
+            inner.pack_start(title_line, False, False, 0)
             inner.pack_start(detail, False, False, 0)
             line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             line.pack_start(inner, True, True, 0)

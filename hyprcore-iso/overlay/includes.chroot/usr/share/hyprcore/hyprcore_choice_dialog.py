@@ -1018,8 +1018,16 @@ def _paint_bar(widget: Gtk.Widget) -> None:
     widget.connect("draw", _draw)
 
 
-def _paint_rounded(widget: Gtk.Widget, hex_color: str, *, tr: bool = False, br: bool = False) -> None:
-    """Opaque fill that leaves the window's right corners transparent."""
+def _paint_rounded(
+    widget: Gtk.Widget,
+    hex_color: str,
+    *,
+    tl: bool = False,
+    tr: bool = False,
+    br: bool = False,
+    bl: bool = False,
+) -> None:
+    """Opaque fill. Only the corners flagged true are rounded, so each one can follow the window."""
 
     def _draw(w, cr) -> bool:
         width = w.get_allocated_width()
@@ -1028,7 +1036,7 @@ def _paint_rounded(widget: Gtk.Widget, hex_color: str, *, tr: bool = False, br: 
             return False
         rgb = _hex_rgb(hex_color) or (33, 33, 33)
         cr.save()
-        _round_corners(cr, 0, 0, width, height, 16, False, tr, br, False)
+        _round_corners(cr, 0, 0, width, height, 16, tl, tr, br, bl)
         cr.set_source_rgb(rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0)
         cr.fill()
         cr.restore()
@@ -2149,6 +2157,8 @@ def pack_back_button(parent: Gtk.Box, on_back) -> Gtk.Button:
     btn.set_relief(Gtk.ReliefStyle.NONE)
     btn.set_halign(Gtk.Align.START)
     btn.set_valign(Gtk.Align.END)
+    btn.set_margin_top(8)
+    btn.set_margin_bottom(14)
     btn.get_style_context().add_class("hyprcore-secondary")
     btn.connect("clicked", lambda *_: on_back())
     parent.pack_end(btn, False, False, 0)
@@ -3244,6 +3254,7 @@ class HubSection:
         build: Optional[Callable[[], Tuple[str, Sequence[DrillItem], Optional[str]]]] = None,
         page: Optional[Callable[[], Gtk.Widget]] = None,
         group: str = "",
+        gap_before: bool = False,
     ) -> None:
         if build is None and page is None:
             raise ValueError(f"section {section_id} needs a menu or a page")
@@ -3253,6 +3264,7 @@ class HubSection:
         self.build = build
         self.page = page
         self.group = group
+        self.gap_before = gap_before
 
 
 class HubAction:
@@ -3405,24 +3417,25 @@ def show_hub(
     nav_col.set_size_request(nav_w, -1)
     nav_col.set_vexpand(True)
     nav_col.get_style_context().add_class("hyprcore-sidebar")
-    _paint_hex(nav_col, _theme_chrome()["sidebar"])
+    _paint_rounded(nav_col, _theme_chrome()["sidebar"], tl=True, bl=True)
     body.pack_start(nav_col, False, False, 0)
 
     head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
     head.get_style_context().add_class("hyprcore-sidehead")
-    _paint_rounded(head, _theme_chrome()["sidebar"])
-    head.set_margin_start(6)
-    head.set_margin_end(6)
+    _paint_rounded(head, _theme_chrome()["sidebar"], tl=True)
     search_btn = Gtk.Button()
     search_btn.set_relief(Gtk.ReliefStyle.NONE)
     search_btn.set_tooltip_text("Search")
     search_btn.get_style_context().add_class("hyprcore-iconbtn")
     search_btn.add(Gtk.Image.new_from_icon_name("system-search-symbolic", Gtk.IconSize.BUTTON))
+    search_btn.set_margin_start(6)
     side_title = Gtk.Label(label="Settings", xalign=0.0)
     side_title.set_hexpand(True)
     side_title.get_style_context().add_class("hyprcore-sidebar-title")
+    side_title.set_margin_end(6)
     search = Gtk.SearchEntry()
     search.set_hexpand(True)
+    search.set_margin_end(6)
     search.set_placeholder_text("Search")
     search.get_style_context().add_class("hyprcore-search")
     search.set_no_show_all(True)
@@ -3713,7 +3726,7 @@ def show_hub(
                 nav=True,
                 icon_px=16,
             )
-            if not group_name and not first_group and first_btn:
+            if (not group_name and not first_group and first_btn) or section.gap_before:
                 btn.set_margin_top(16)
             buttons[section.id] = btn
             nav.pack_start(btn, False, False, 0)

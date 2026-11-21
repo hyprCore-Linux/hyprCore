@@ -89,9 +89,9 @@ def main() -> int:
         HubSection("configs", "Configs", "folder", page=pages.configs_page, group="Tools"),
         HubSection("sync", "GTK-Sync", "emblem-synchronizing", _sync, group="Tools"),
         HubSection("system", "System", "preferences-system", page=pages.system_page),
-        HubSection("about", "About", "help-about", page=pages.about_page),
         HubSection("power", "Power", "preferences-system-power", page=pages.power_page),
         HubSection("session", "Session", "system-shutdown", page=pages.session_page),
+        HubSection("about", "About", "help-about", page=pages.about_page, gap_before=True),
     ]
     section = (sys.argv[1] if len(sys.argv) > 1 else "wifi").strip().lower()
     drill = (sys.argv[2] if len(sys.argv) > 2 else "").strip().lower()

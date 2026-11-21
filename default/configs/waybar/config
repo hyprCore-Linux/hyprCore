@@ -13,12 +13,12 @@
   "modules-right": [
     "clock",
     "image#volume",
-    "image#memory",
-    "battery",
-    "network",
     "image#cpu",
+    "image#memory",
+    "network",
     "tray",
     "custom/settings",
+    "battery",
     "custom/power"
   ],
   "image#menu": {
@@ -77,15 +77,20 @@
     "on-click-right": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click btop"
   },
   "battery": {
-    "format": "{capacity}%",
-    "format-charging": "{capacity}% \uf0e7",
-    "format-plugged": "{capacity}%",
+    "format": "{icon} {capacity}%",
+    "format-charging": "{icon} {capacity}% \uf0e7",
+    "format-plugged": "{icon} {capacity}%",
     "format-icons": [
-      "\uf244",
-      "\uf243",
-      "\uf242",
-      "\uf241",
-      "\uf240"
+      "\udb80\udc7a",
+      "\udb80\udc7b",
+      "\udb80\udc7c",
+      "\udb80\udc7d",
+      "\udb80\udc7e",
+      "\udb80\udc7f",
+      "\udb80\udc80",
+      "\udb80\udc81",
+      "\udb80\udc82",
+      "\udb80\udc79"
     ],
     "on-click": "PATH=\"$HOME/.local/bin:$PATH\" hyprcore-waybar-click battery"
   },
