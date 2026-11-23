@@ -126,11 +126,9 @@ ffmpeg # gtk-video export (also listed under desktop)
 grim # Wayland screenshot utility (Print / Super+Shift+S)
 slurp # Region selector for grim screenshots (Esc cancels via hyprcore-escape)
 # Daily apps: gtk-term / gtk-files / gtk-edit / gtk-image / gtk-video / gtk-calc (+ gtk-neurond Self Driving)
-# Keep mousepad as an emergency editor fallback if gtk-edit is missing
 firefox-esr # Live-session browser (Desktop may add Chrome via Calamares)
 gvfs # userspace virtual filesystem - GIO module
 gvfs-backends # userspace virtual filesystem - backends
-mousepad # Fallback text editor
 xfce4-power-manager # Power, sleep, and battery settings
 powertop # Diagnose power use (hypr-settings Battery → Power by process)
 brightnessctl # Backlight brightness control from keybinds
