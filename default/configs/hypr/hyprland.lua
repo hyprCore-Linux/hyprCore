@@ -14,6 +14,8 @@ hl.env("GTK_ICON_THEME", "Papirus-Dark")
 hl.env("XDG_ICON_THEME", "Papirus-Dark")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("QT_QPA_PLATFORMTHEME", "gtk3")
+-- LibreOffice's generic toolkit draws a light dialog and its own oversized
+-- pointer. gtk3 uses the hyprCore theme and the normal desktop cursor.
 hl.env("SAL_USE_VCLPLUGIN", "gtk3")
 hl.env("XCURSOR_SIZE", "24")
 
@@ -27,6 +29,12 @@ hl.monitor({
 -- Personalize overlay (empty in default/). Named outputs must come after the fallback.
 require("monitors")
 
+hl.curve("emphasizedDecel", { type = "bezier", points = { { 0.05, 0.7 }, { 0.1, 1 } } })
+hl.curve("emphasizedAccel", { type = "bezier", points = { { 0.3, 0 }, { 0.8, 0.15 } } })
+hl.curve("menu_decel", { type = "bezier", points = { { 0.1, 1 }, { 0, 1 } } })
+hl.curve("menu_accel", { type = "bezier", points = { { 0.52, 0.03 }, { 0.72, 0.08 } } })
+hl.curve("stall", { type = "bezier", points = { { 1, -0.1 }, { 0.7, 0.85 } } })
+hl.curve("standardDecel", { type = "bezier", points = { { 0, 0 }, { 0, 1 } } })
 hl.animation({
     leaf = "global",
     enabled = true,
@@ -37,73 +45,97 @@ hl.animation({
     leaf = "windows",
     enabled = true,
     speed = 3.5,
-    bezier = "default",
+    bezier = "emphasizedDecel",
 })
 hl.animation({
     leaf = "windowsIn",
     enabled = true,
     speed = 3.5,
-    bezier = "default",
+    bezier = "emphasizedDecel",
+    style = "popin 80%",
 })
 hl.animation({
     leaf = "windowsOut",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "emphasizedDecel",
+    style = "popin 90%",
+})
+hl.animation({
+    leaf = "windowsMove",
+    enabled = true,
+    speed = 3.5,
+    bezier = "emphasizedDecel",
+    style = "slide",
 })
 hl.animation({
     leaf = "fade",
     enabled = true,
     speed = 3.5,
-    bezier = "default",
+    bezier = "emphasizedDecel",
 })
 hl.animation({
     leaf = "fadeIn",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "emphasizedDecel",
 })
 hl.animation({
     leaf = "fadeOut",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "emphasizedDecel",
 })
 hl.animation({
     leaf = "workspaces",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "menu_decel",
+    style = "slide",
 })
 hl.animation({
     leaf = "workspacesIn",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "menu_decel",
 })
 hl.animation({
     leaf = "workspacesOut",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "emphasizedAccel",
 })
 hl.animation({
     leaf = "layers",
     enabled = true,
     speed = 4,
-    bezier = "default",
+    bezier = "emphasizedDecel",
 })
 hl.animation({
     leaf = "layersIn",
     enabled = true,
     speed = 4,
-    bezier = "default",
+    bezier = "emphasizedDecel",
+    style = "popin 93%",
 })
 hl.animation({
     leaf = "layersOut",
     enabled = true,
     speed = 3,
-    bezier = "default",
+    bezier = "menu_accel",
+    style = "popin 94%",
+})
+hl.animation({
+    leaf = "fadeLayersIn",
+    enabled = true,
+    speed = 0.5,
+    bezier = "menu_decel",
+})
+hl.animation({
+    leaf = "fadeLayersOut",
+    enabled = true,
+    speed = 2.7,
+    bezier = "stall",
 })
 
 
@@ -145,6 +177,21 @@ hl.layer_rule({
     no_anim = true,
 })
 
+hl.gesture({
+    fingers = 3,
+    direction = "swipe",
+    action = "move",
+})
+hl.gesture({
+    fingers = 3,
+    direction = "pinch",
+    action = "fullscreen",
+})
+hl.gesture({
+    fingers = 4,
+    direction = "horizontal",
+    action = "workspace",
+})
 
 local mod = "SUPER"
 
@@ -152,11 +199,11 @@ hl.bind(mod .. " + Return", hl.dsp.exec_cmd("hyprcore-launch gtk-term"))
 hl.bind(mod .. " + E", hl.dsp.exec_cmd("hyprcore-launch gtk-files"))
 hl.bind(mod .. " + T", hl.dsp.exec_cmd("hyprcore-launch gtk-term"))
 hl.bind(mod .. " + G", hl.dsp.exec_cmd("hyprcore-launch env GSK_RENDERER=ngl gtk-edit"))
-hl.bind(mod .. " + comma", hl.dsp.exec_cmd("hyprcore-launch hypr-settings"))
+hl.bind(mod .. " + comma", hl.dsp.exec_cmd("hyprcore-launch hyprcore-settings"))
 
 hl.bind("CTRL + ALT + T", hl.dsp.exec_cmd("hyprcore-launch gtk-term"))
 hl.bind("CTRL + ALT + X", hl.dsp.exec_cmd("hyprcore-launch gtk-calc"))
-hl.bind("CTRL + ALT + N", hl.dsp.exec_cmd("hyprcore-launch gtk-files ~"))
+-- Ctrl+Alt+N is GTK Edit's side-by-side tabs. Do not launch gtk-files here.
 hl.bind("CTRL + ALT + SHIFT + N", hl.dsp.exec_cmd("hyprcore-launch env GSK_RENDERER=ngl gtk-edit"))
 hl.bind("CTRL + ALT + equal", hl.dsp.exec_cmd("hyprcore-launch gtk-colors"))
 hl.bind("CTRL + ALT + up", hl.dsp.exec_cmd("hyprcore-volume +5"))
@@ -209,7 +256,7 @@ hl.define_submap("gnomeresize", function()
     hl.bind("Return", hl.dsp.submap("reset"))
 end)
 
-hl.bind("ALT + Space", hl.dsp.exec_cmd("hyprcore-launch hypr-settings"))
+hl.bind("ALT + Space", hl.dsp.exec_cmd("hyprcore-launch hyprcore-settings"))
 
 hl.bind(mod .. " + CTRL + left", hl.dsp.focus({ direction = "left" }))
 hl.bind(mod .. " + CTRL + right", hl.dsp.focus({ direction = "right" }))
@@ -285,12 +332,11 @@ hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("hyprcore-volume +5"))
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("hyprcore-volume -5"))
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("hyprcore-volume mute-toggle"))
 
--- Super+left-drag moves / Super+right-drag resizes. Hyprland 0.56 Lua needs
--- { mouse = true } (bindm); without it the binds register but do not drag.
--- Needed for Chromium/web apps and root X11 tools (Synaptic/GParted) whose
--- titlebars often cannot start an interactive move.
-hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+-- Super+left-drag moves / Super+right-drag resizes. Hyprland 0.56 treats these
+-- as clicks unless drag=true, so the window never follows the pointer.
+-- Needed for apps with no title bar to grab, and for Chromium and root X11 tools.
+hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { drag = true })
+hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { drag = true })
 hl.bind("mouse:273", hl.dsp.exec_cmd("hyprcore-desktop-rmb"), { non_consuming = true })
 
 
@@ -387,7 +433,7 @@ hl.window_rule({
     },
     float = true,
     center = true,
-    border_size = 0,
+    border_size = 3,
 })
 
 hl.window_rule({
@@ -427,8 +473,8 @@ hl.window_rule({
         class = "^(hyprcore-choice)$",
     },
     float = true,
-    border_size = 0,
-    rounding = 20,
+    border_size = 3,
+    rounding = 8,
 })
 
 hl.window_rule({
@@ -436,8 +482,8 @@ hl.window_rule({
         class = "^(hyprcore-calendar)$",
     },
     float = true,
-    border_size = 0,
-    rounding = 20,
+    border_size = 3,
+    rounding = 8,
 })
 
 hl.window_rule({
@@ -447,7 +493,7 @@ hl.window_rule({
     float = true,
     center = true,
     size = "780 560",
-    border_size = 0,
+    border_size = 3,
 })
 
 hl.window_rule({
@@ -485,8 +531,8 @@ hl.window_rule({
     match = {
         xdg_tag = "popup",
     },
-    border_size = 0,
-    rounding = 0,
+    border_size = 3,
+    rounding = 8,
     no_shadow = true,
 })
 
@@ -494,28 +540,28 @@ hl.window_rule({
     match = {
         xdg_tag = "menu",
     },
-    border_size = 0,
+    border_size = 3,
 })
 
 hl.window_rule({
     match = {
         xdg_tag = "dropdown",
     },
-    border_size = 0,
+    border_size = 3,
 })
 
 hl.window_rule({
     match = {
         xdg_tag = "tooltip",
     },
-    border_size = 0,
+    border_size = 3,
 })
 
 hl.window_rule({
     match = {
         modal = true,
     },
-    border_size = 0,
+    border_size = 3,
 })
 
 hl.window_rule({
@@ -570,14 +616,18 @@ hl.config({
     },
     -- Personalize overlay (empty in default/). Named outputs must come after the fallback.
     general = {
-        gaps_in = 12,
+        gaps_in = 4,
         gaps_out = 18,
         border_size = 3,
         col = {
-            active_border = "rgba(505050aa)",
-            inactive_border = "rgba(2a2a2a88)",
+            active_border = { colors = { "rgba(00000000)", "rgba(00000000)" }, angle = 0 },
+            inactive_border = { colors = { "rgba(00000000)", "rgba(00000000)" }, angle = 0 },
         },
         layout = "dwindle",
+        -- Edge resize still works when Themes sets border_size = 0 (no visible border).
+        resize_on_border = true,
+        extend_border_grab_area = 20,
+        hover_icon_on_border = true,
     },
     dwindle = {
         preserve_split = true,
@@ -603,15 +653,17 @@ hl.config({
             -- Soft grey shadow (was near-opaque black)
             color = "rgba(00000055)",
         },
+        dim_inactive = true,
+        dim_strength = 0.05,
     },
-    -- ~2× default speed (global default is 8ds; lower = faster)
+    -- ~2× default speed (global default is 8ds; lower = faster).
     animations = {
         enabled = true,
         -- Layer surfaces (fuzzel / notifications); per-layer style via layerrule
     },
     -- Fuzzel (namespace "launcher") slides up from the bottom; keep bars/wallpaper still.
     misc = {
-        background_color = "rgb(272822)",
+        background_color = "rgb(212121)",
         -- Allow Super alone (application launcher) without eating other Super binds
         enable_swallow = false,
         disable_hyprland_logo = true,
@@ -658,7 +710,7 @@ hl.config({
     -- Maximize / restore
     -- Snap left / right (move window in layout)
     -- Alt+F7 move mode / Alt+F8 resize mode
-    -- Alt+Space → Settings (hypr-settings)
+    -- Alt+Space → Settings (hyprcore-settings)
     -- Focus (Hyprland: Super+Ctrl+arrows — Super+arrows are snap)
     -- =============================================================================
     -- 3. Workspaces & monitors (GNOME)
