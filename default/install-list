@@ -168,7 +168,6 @@ xsettingsd # Xsettings daemon (Appearance / gtk-theme bridge → ~/.config/xsett
 gparted # Partition editor (settings panel Disks)
 baobab # Disk usage analyzer (GUI)
 gdebi # Install .deb packages with dependency resolution (GUI)
-hardinfo # System information and benchmarks (GUI)
 synaptic # Graphical package manager
 imv # Wayland image viewer (mimeapps default)
 mpv # Lightweight media player (mimeapps default for video/audio)

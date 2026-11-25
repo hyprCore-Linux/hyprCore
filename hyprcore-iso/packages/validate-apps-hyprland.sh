@@ -40,7 +40,7 @@ declare -A LAYER
 _layer() { LAYER["$1"]="$2"; }
 
 # Layer B — GTK/Qt session defaults (Hyprland daily + utilities)
-for pkg in mousepad imv galculator zathura xarchiver \
+for pkg in imv galculator zathura xarchiver \
 	gparted synaptic remmina kicad mpv mplayer cava \
 	dconf-editor system-config-printer zenity \
 	btop gimp xfce4-power-manager deskflow \

@@ -157,35 +157,12 @@ if [[ -n "${_distro_conf:-}" ]]; then
 fi
 
 INST_BG_DEST="$BUILD_ROOT/config/includes.chroot/usr/share/backgrounds/hyprcore-installed"
-mkdir -p "$INST_BG_DEST"
-# Defaults first, then personalize overwrites same basenames.
-for _dir in "$IMAGES_DEFAULT/installed" "$IMAGES_PERSONALIZE/installed"; do
-  [[ -d "$_dir" ]] || continue
-  shopt -s nullglob
-  for _bg in "$_dir"/*.png "$_dir"/*.jpg "$_dir"/*.jpeg "$_dir"/*.webp; do
-    [[ -f "$_bg" ]] || continue
-    cp -a "$_bg" "$INST_BG_DEST/"
-  done
-done
-# Ensure a canonical background.png exists for skel hyprpaper.conf / live fallback.
-if [[ ! -f "$INST_BG_DEST/background.png" ]]; then
-  if [[ -n "${_live_bg:-}" && -f "${_live_bg}" ]]; then
-    if command -v convert >/dev/null 2>&1 && [[ "${_live_bg##*.}" != "png" ]]; then
-      convert "$_live_bg" PNG:"$INST_BG_DEST/background.png"
-    else
-      cp -a "$_live_bg" "$INST_BG_DEST/background.png"
-    fi
-  else
-    _any="$(find "$INST_BG_DEST" -type f \( -name '*.png' -o -name '*.jpg' \) | head -1 || true)"
-    if [[ -n "${_any:-}" ]]; then
-      cp -a "$_any" "$INST_BG_DEST/background.png"
-    fi
-  fi
-fi
-# Also mirror live wallpaper into the picker folder when distinct.
-if [[ -n "${_live_bg:-}" && -f "$SKEL_HYPRCORE_SHARE/background.png" ]]; then
-  cp -a "$SKEL_HYPRCORE_SHARE/background.png" "$INST_BG_DEST/live-background.png"
-fi
+# Personalize images are the whole set. Defaults are used only when that folder
+# has no images. Do not merge the ISO overlay or the live wallpaper in here.
+hyprcore_stage_installed_wallpapers \
+  "$INST_BG_DEST" \
+  "$IMAGES_DEFAULT/installed" \
+  "$IMAGES_PERSONALIZE/installed"
 
 HYPRCORE_PIX="$BUILD_ROOT/config/includes.chroot/usr/share/pixmaps"
 _menu_icon="$(hyprcore_resolve_image "$IMAGES_DEFAULT" "$IMAGES_PERSONALIZE" "icons/menu-icon" || true)"

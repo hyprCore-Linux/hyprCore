@@ -65,3 +65,38 @@ hyprcore_resolve_image() {
 	done
 	return 1
 }
+
+# Install wallpapers into dest.
+# If personalize/images/installed contains any image, those files are the only
+# ones installed. An empty or missing personalize folder uses the defaults.
+# Previous images in dest are removed so leftovers from the other set do not remain.
+# Prints the source directory used.
+hyprcore_stage_installed_wallpapers() {
+	local dest="$1" defaults_dir="$2" personalize_dir="$3"
+	local src="" dir f
+	local nullglob_was=0
+	shopt -q nullglob && nullglob_was=1
+	shopt -s nullglob
+	for dir in "$personalize_dir" "$defaults_dir"; do
+		[[ -d "$dir" ]] || continue
+		for f in "$dir"/*.png "$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.webp; do
+			[[ -f "$f" ]] || continue
+			src="$dir"
+			break 2
+		done
+	done
+	if [[ -z "$src" ]]; then
+		((nullglob_was)) || shopt -u nullglob
+		echo "no installed wallpapers in ${personalize_dir} or ${defaults_dir}" >&2
+		return 1
+	fi
+	mkdir -p "$dest"
+	find "$dest" -mindepth 1 -maxdepth 1 -type f \
+		\( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -delete
+	for f in "$src"/*.png "$src"/*.jpg "$src"/*.jpeg "$src"/*.webp; do
+		[[ -f "$f" ]] || continue
+		cp -a "$f" "$dest/"
+	done
+	((nullglob_was)) || shopt -u nullglob
+	printf '%s\n' "$src"
+}

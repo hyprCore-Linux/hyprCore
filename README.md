@@ -166,7 +166,7 @@ Live browser is **firefox-esr**.
 
 ### Primary daily apps (Layer B)
 
-**gtk-term** (terminal), **gtk-files** (files), **gtk-edit** (editor), **gtk-image** (images), **gtk-video** (trimmer), and **gtk-player** (player) are the Hyprland daily apps (binaries from `default/gtk-apps/`). mousepad remains as an editor package fallback. Archives: **xarchiver** (+ gtk-files Extract/Compress). Power diagnostics: **powertop** via hypr-settings Battery.
+**gtk-term** (terminal), **gtk-files** (files), **gtk-edit** (editor), **gtk-image** (images), **gtk-video** (trimmer), and **gtk-player** (player) are the Hyprland daily apps (binaries from `default/gtk-apps/`). Archives: **xarchiver** (+ gtk-files Extract/Compress). Power diagnostics: **powertop** via hypr-settings Battery.
 
 ### What this is *not*
 
