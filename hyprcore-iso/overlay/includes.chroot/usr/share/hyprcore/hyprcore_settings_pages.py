@@ -1997,7 +1997,7 @@ def power_page() -> Gtk.Widget:
             _combo_row(
                 "When the lid is closed on AC",
                 lid_choices,
-                _xfpm_get_int("lid-action-on-ac", 1),
+                _xfpm_get_int("lid-action-on-ac", 4),
                 lambda v: _xfpm_set("lid-action-on-ac", "uint", v),
             ),
             False,
@@ -2346,9 +2346,13 @@ def keyboard_page() -> Gtk.Widget:
 
                 for key, val in values.items():
                     write_val = f'"{val}"' if conf.suffix == ".lua" else val
-                    pat = re.compile(rf"(?m)^(\s*){re.escape(key)}\s*=.*$")
-                    if pat.search(text):
-                        text = pat.sub(rf"\1{key} = {write_val}", text, count=1)
+                    pat = re.compile(rf"(?m)^(\s*){re.escape(key)}\s*=(.*)$")
+                    m = pat.search(text)
+                    if m:
+                        # Keep trailing commas so Lua tables stay valid.
+                        tail = m.group(2).split("--", 1)[0].rstrip()
+                        comma = "," if tail.endswith(",") else ""
+                        text = pat.sub(rf"\1{key} = {write_val}{comma}", text, count=1)
                 conf.write_text(text, encoding="utf-8")
             except OSError as exc:
                 errors.append(str(exc))

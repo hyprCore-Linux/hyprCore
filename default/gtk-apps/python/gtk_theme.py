@@ -975,7 +975,11 @@ def _replace_hypr_assign(text: str, key: str, value: str) -> str:
         trimmed = bare.lstrip()
         indent = bare[: len(bare) - len(trimmed)]
         if trimmed.startswith(key_eq) or trimmed.startswith(key_eq2):
-            out.append(f"{indent}{key} = {value}{nl or chr(10)}")
+            # Keep trailing commas. Theme sync rewrites these lines often; dropping
+            # commas breaks hyprland.lua table syntax and Hyprland fails to start.
+            assign = trimmed.split("--", 1)[0].rstrip()
+            comma = "," if assign.endswith(",") else ""
+            out.append(f"{indent}{key} = {value}{comma}{nl or chr(10)}")
         else:
             out.append(line)
     return "".join(out)

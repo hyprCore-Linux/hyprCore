@@ -2,11 +2,13 @@
 """Waybar image-module helper: circular progress ring around a centered icon."""
 from __future__ import annotations
 
+import fcntl
 import math
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import cairo
@@ -159,12 +161,7 @@ def _draw_ring(path: Path, percent: float, icon: str, fg: str, dim: str, muted: 
     tmp.replace(path)
 
 
-def main(argv: list[str]) -> int:
-    kind = (argv[1] if len(argv) > 1 else "").strip().lower()
-    if kind not in {"cpu", "memory", "volume"}:
-        print("usage: stat-ring.py cpu|memory|volume", file=sys.stderr)
-        return 2
-
+def _render(kind: str) -> None:
     fg, dim = _waybar_colors()
     out_dir = _runtime_dir()
     png = out_dir / f"{kind}.png"
@@ -188,6 +185,81 @@ def main(argv: list[str]) -> int:
             icon = "\uf028"
 
     _draw_ring(png, 0.0 if muted else pct, icon, fg, dim, muted=muted)
+    tmp = out_dir / f"{kind}.tooltip.tmp"
+    tmp.write_text(tooltip + "\n", encoding="utf-8")
+    tmp.replace(out_dir / f"{kind}.tooltip")
+
+
+def _daemon_loop() -> None:
+    while True:
+        for kind in ("cpu", "memory", "volume"):
+            try:
+                _render(kind)
+            except Exception:
+                pass
+        time.sleep(1)
+
+
+def _ensure_daemon() -> None:
+    """Start one background renderer. Waybar reads these scripts on its UI thread."""
+    runtime = _runtime_dir()
+    lock_fd = os.open(runtime / "daemon.lock", os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(lock_fd)
+        return
+    pid_path = runtime / "daemon.pid"
+    if pid_path.is_file():
+        try:
+            os.kill(int(pid_path.read_text(encoding="utf-8")), 0)
+            os.close(lock_fd)
+            return
+        except (OSError, ValueError):
+            pass
+    pid = os.fork()
+    if pid != 0:
+        os.close(lock_fd)
+        return
+    os.setsid()
+    null = os.open(os.devnull, os.O_RDWR)
+    os.dup2(null, 0)
+    os.dup2(null, 1)
+    os.dup2(null, 2)
+    os.close(null)
+    pid_path.write_text(f"{os.getpid()}\n", encoding="utf-8")
+    try:
+        _daemon_loop()
+    finally:
+        try:
+            pid_path.unlink()
+        except OSError:
+            pass
+    os._exit(0)
+
+
+def main(argv: list[str]) -> int:
+    kind = (argv[1] if len(argv) > 1 else "").strip().lower()
+    if kind == "daemon":
+        runtime = _runtime_dir()
+        lock_fd = os.open(runtime / "daemon.lock", os.O_CREAT | os.O_RDWR, 0o644)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return 0
+        (runtime / "daemon.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        _daemon_loop()
+        return 0
+    if kind not in {"cpu", "memory", "volume"}:
+        print("usage: stat-ring.py cpu|memory|volume|daemon", file=sys.stderr)
+        return 2
+
+    _ensure_daemon()
+    png = _runtime_dir() / f"{kind}.png"
+    tooltip_path = _runtime_dir() / f"{kind}.tooltip"
+    tooltip = kind
+    if tooltip_path.is_file():
+        tooltip = tooltip_path.read_text(encoding="utf-8").strip() or kind
     sys.stdout.write(f"{png}\n{tooltip}\n")
     return 0
 
